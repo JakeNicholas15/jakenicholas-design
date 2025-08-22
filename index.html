@@ -10,17 +10,17 @@
       overflow: hidden;
     }
 
-    /* Tiled checker background */
+    /* Tiled checker bg */
     body {
       background-image: url("DanielleTheWalker_BG.jpg"), url("DanielleTheWalker_BG.jpg");
       background-repeat: repeat;
       background-size: 50px 50px;
       background-position: 0 0, 25px 25px;
       position: relative;
-      font-family: sans-serif;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
 
-    /* Featured image in the middle */
+    /* ===== Featured image (center) ===== */
     .featured {
       position: absolute;
       top: 50%;
@@ -28,32 +28,54 @@
       width: 500px;
       height: 800px;
       transform: translate(-50%, -50%);
-      animation: pulse 2s infinite;
-      border-radius: 8px;
+      border-radius: 12px;
       overflow: hidden;
       z-index: 3;
+      /* gentle scale so the psychedelia sits on top */
+      animation: pulse 2s ease-in-out infinite;
     }
     .featured img {
       width: 100%;
       height: 100%;
       object-fit: cover;
       display: block;
+      /* CRAZY: hue cycle + light flicker */
+      animation: hue 6s linear infinite, flicker 1.1s steps(2, end) infinite;
+      filter: saturate(1.4) contrast(1.05);
     }
-    /* strong RGB glow for featured via pseudo-element so it doesn't fight transform */
+
+    /* Layer 1 glow: thick RGB box-shadow that cycles */
     .featured::after {
       content: "";
       position: absolute;
       inset: 0;
-      border-radius: 8px;
-      animation: glow 5s infinite;
+      border-radius: inherit;
       pointer-events: none;
+      animation: glowRGB 3.5s linear infinite;
+    }
+    /* Layer 2 glow ring: neon conic-gradient ring that spins + breathes */
+    .featured::before {
+      content: "";
+      position: absolute;
+      inset: -28px;                 /* extends past the image */
+      border-radius: inherit;
+      background: conic-gradient(
+        from 0deg,
+        #ff0040, #ff00ff, #6a5bff, #00e6ff, #00ff88, #ffff00, #ff7a00, #ff0040
+      );
+      filter: blur(18px) saturate(2.2);
+      mix-blend-mode: screen;
+      opacity: 0.9;
+      pointer-events: none;
+      transform-origin: 50% 50%;
+      animation: ringSpin 4s linear infinite, pulseRing 2s ease-in-out infinite;
     }
 
-    /* MEME FLOATERS (all share base positioning) */
+    /* ===== Floaters base ===== */
     .meme {
       position: absolute;
       z-index: 5;
-      will-change: transform, left, top;
+      will-change: transform, left, top, bottom;
     }
     .meme img {
       width: 100%;
@@ -62,60 +84,91 @@
       pointer-events: none;
     }
 
-    /* OLD TWO FLOATERS (horizontal) */
+    /* Old two (horizontal) */
     .meme1 {                /* left -> right */
       bottom: 15%;
       left: -30%;
       width: 15vw;
       animation: slideRightSpin 25s linear infinite;
-      filter: drop-shadow(0 0 24px rgba(255, 64, 64, 1)) drop-shadow(0 0 60px rgba(255, 64, 64, 0.9));
+      filter: drop-shadow(0 0 24px rgba(255, 64, 64, 1)) drop-shadow(0 0 60px rgba(255, 64, 64, .9));
     }
     .meme2 {                /* right -> left */
       top: 10%;
       left: 100%;
       width: 10vw;
       animation: slideLeftSpin 30s linear infinite;
-      filter: drop-shadow(0 0 24px rgba(64, 255, 120, 1)) drop-shadow(0 0 60px rgba(64, 255, 120, 0.9));
+      filter: drop-shadow(0 0 24px rgba(64, 255, 120, 1)) drop-shadow(0 0 60px rgba(64, 255, 120, .9));
     }
 
-    /* NEW TWO FLOATERS (vertical) */
+    /* New two (vertical) */
     .meme3 {                /* top -> bottom */
       top: -30%;
       left: 10%;
       width: 12vw;
       animation: floatDownSpin 28s linear infinite;
-      filter: drop-shadow(0 0 24px rgba(80, 150, 255, 1)) drop-shadow(0 0 60px rgba(80, 150, 255, 0.9));
+      filter: drop-shadow(0 0 24px rgba(80, 150, 255, 1)) drop-shadow(0 0 60px rgba(80, 150, 255, .9));
     }
     .meme4 {                /* bottom -> top */
       bottom: -30%;
       right: 12%;
       width: 12vw;
       animation: floatUpSpin 32s linear infinite;
-      filter: drop-shadow(0 0 24px rgba(255, 90, 230, 1)) drop-shadow(0 0 60px rgba(255, 90, 230, 0.9));
+      filter: drop-shadow(0 0 24px rgba(255, 90, 230, 1)) drop-shadow(0 0 60px rgba(255, 90, 230, .9));
     }
 
-    /* Animations */
+    /* ===== Animations ===== */
     @keyframes pulse {
       0%, 100% { transform: translate(-50%, -50%) scale(1); }
-      50%      { transform: translate(-50%, -50%) scale(1.1); }
+      50%      { transform: translate(-50%, -50%) scale(1.12); }
     }
-    @keyframes glow {
-      0%   { box-shadow: 0 0 40px 10px rgba(255,0,0,0.9); }
-      33%  { box-shadow: 0 0 60px 20px rgba(0,255,0,0.9); }
-      66%  { box-shadow: 0 0 60px 20px rgba(0,0,255,0.9); }
-      100% { box-shadow: 0 0 40px 10px rgba(255,0,0,0.9); }
+
+    /* strobe / CRT-ish flicker */
+    @keyframes flicker {
+      0% { opacity: 1; }
+      8% { opacity: .85; }
+      9% { opacity: 1; }
+      30% { opacity: .9; }
+      31% { opacity: 1; }
+      70% { opacity: .88; }
+      71% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+
+    /* hue rotation for the feature image */
+    @keyframes hue {
+      from { filter: hue-rotate(0deg) saturate(1.6) contrast(1.08); }
+      to   { filter: hue-rotate(360deg) saturate(1.6) contrast(1.08); }
+    }
+
+    /* big RGB box-shadow cycles */
+    @keyframes glowRGB {
+      0%   { box-shadow: 0 0 40px 14px rgba(255,0,64,.95), 0 0 80px 30px rgba(255,0,64,.8); }
+      25%  { box-shadow: 0 0 50px 18px rgba(0,255,128,.95), 0 0 90px 34px rgba(0,255,128,.8); }
+      50%  { box-shadow: 0 0 60px 22px rgba(0,128,255,.95), 0 0 110px 42px rgba(0,128,255,.8); }
+      75%  { box-shadow: 0 0 55px 20px rgba(255,220,0,.95), 0 0 100px 40px rgba(255,220,0,.8); }
+      100% { box-shadow: 0 0 40px 14px rgba(255,0,64,.95), 0 0 80px 30px rgba(255,0,64,.8); }
+    }
+
+    /* neon ring spin + breathe */
+    @keyframes ringSpin {
+      from { transform: rotate(0deg) scale(1); }
+      to   { transform: rotate(360deg) scale(1); }
+    }
+    @keyframes pulseRing {
+      0%,100% { opacity: .85; transform: rotate(var(--r,0)) scale(1); }
+      50%     { opacity: 1;    transform: rotate(var(--r,0)) scale(1.08); }
     }
 
     /* Horizontal movers */
     @keyframes slideRightSpin {
-      0%   { left: -30%;  transform: rotate(0deg); }
-      50%  { left: 100%;  transform: rotate(360deg); }
-      100% { left: -30%;  transform: rotate(720deg); }
+      0%   { left: -30%; transform: rotate(0deg); }
+      50%  { left: 100%; transform: rotate(360deg); }
+      100% { left: -30%; transform: rotate(720deg); }
     }
     @keyframes slideLeftSpin {
-      0%   { left: 100%;  transform: rotate(0deg); }
-      50%  { left: -30%;  transform: rotate(360deg); }
-      100% { left: 100%;  transform: rotate(720deg); }
+      0%   { left: 100%; transform: rotate(0deg); }
+      50%  { left: -30%; transform: rotate(360deg); }
+      100% { left: 100%; transform: rotate(720deg); }
     }
 
     /* Vertical movers */
@@ -130,7 +183,7 @@
       100% { bottom: -30%; transform: rotate(720deg); }
     }
 
-    /* make sure nothing scrolls accidentally on tiny screens */
+    /* mobile sizing */
     @media (max-width: 640px) {
       .featured { width: 70vw; height: 110vw; }
       .meme1 { width: 28vw; }
