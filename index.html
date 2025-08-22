@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Danielle the Walker</title>
   <style>
     html, body {
@@ -9,6 +9,8 @@
       height: 100%;
       overflow: hidden;
     }
+
+    /* Tiled checker background */
     body {
       background-image: url("DanielleTheWalker_BG.jpg"), url("DanielleTheWalker_BG.jpg");
       background-repeat: repeat;
@@ -17,7 +19,8 @@
       position: relative;
       font-family: sans-serif;
     }
-    /* Featured image (central) */
+
+    /* Featured image in the middle */
     .featured {
       position: absolute;
       top: 50%;
@@ -25,9 +28,10 @@
       width: 500px;
       height: 800px;
       transform: translate(-50%, -50%);
-      animation: pulse 2s infinite, glow 5s infinite;
+      animation: pulse 2s infinite;
       border-radius: 8px;
       overflow: hidden;
+      z-index: 3;
     }
     .featured img {
       width: 100%;
@@ -35,62 +39,102 @@
       object-fit: cover;
       display: block;
     }
-    /* New meme images */
-    .meme1, .meme2 {
+    /* strong RGB glow for featured via pseudo-element so it doesn't fight transform */
+    .featured::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: 8px;
+      animation: glow 5s infinite;
+      pointer-events: none;
+    }
+
+    /* MEME FLOATERS (all share base positioning) */
+    .meme {
       position: absolute;
       z-index: 5;
+      will-change: transform, left, top;
     }
-    .meme1 {
+    .meme img {
+      width: 100%;
+      height: auto;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* OLD TWO FLOATERS (horizontal) */
+    .meme1 {                /* left -> right */
       bottom: 15%;
       left: -30%;
       width: 15vw;
       animation: slideRightSpin 25s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(255, 64, 64, 1)) drop-shadow(0 0 60px rgba(255, 64, 64, 0.9));
     }
-    .meme2 {
+    .meme2 {                /* right -> left */
       top: 10%;
       left: 100%;
       width: 10vw;
       animation: slideLeftSpin 30s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(64, 255, 120, 1)) drop-shadow(0 0 60px rgba(64, 255, 120, 0.9));
     }
-    .meme1 img, .meme2 img {
-      width: 100%;
-      height: auto;
-      display: block;
+
+    /* NEW TWO FLOATERS (vertical) */
+    .meme3 {                /* top -> bottom */
+      top: -30%;
+      left: 10%;
+      width: 12vw;
+      animation: floatDownSpin 28s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(80, 150, 255, 1)) drop-shadow(0 0 60px rgba(80, 150, 255, 0.9));
+    }
+    .meme4 {                /* bottom -> top */
+      bottom: -30%;
+      right: 12%;
+      width: 12vw;
+      animation: floatUpSpin 32s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(255, 90, 230, 1)) drop-shadow(0 0 60px rgba(255, 90, 230, 0.9));
     }
 
     /* Animations */
     @keyframes pulse {
-      0%, 100% {
-        transform: translate(-50%, -50%) scale(1);
-      }
-      50% {
-        transform: translate(-50%, -50%) scale(1.1);
-      }
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50%      { transform: translate(-50%, -50%) scale(1.1); }
     }
     @keyframes glow {
-      0% {
-        box-shadow: 0 0 40px 10px rgba(255,0,0,0.9);
-      }
-      33% {
-        box-shadow: 0 0 50px 20px rgba(0,255,0,0.9);
-      }
-      66% {
-        box-shadow: 0 0 50px 20px rgba(0,0,255,0.9);
-      }
-      100% {
-        box-shadow: 0 0 40px 10px rgba(255,0,0,0.9);
-      }
+      0%   { box-shadow: 0 0 40px 10px rgba(255,0,0,0.9); }
+      33%  { box-shadow: 0 0 60px 20px rgba(0,255,0,0.9); }
+      66%  { box-shadow: 0 0 60px 20px rgba(0,0,255,0.9); }
+      100% { box-shadow: 0 0 40px 10px rgba(255,0,0,0.9); }
     }
 
-        @keyframes slideRightSpin {
-      0% { left: 100%; transform: rotate(0deg); }
-      50% { left: -30%; transform: rotate(360deg); }
-      100% { left: 100%; transform: rotate(720deg); }
+    /* Horizontal movers */
+    @keyframes slideRightSpin {
+      0%   { left: -30%;  transform: rotate(0deg); }
+      50%  { left: 100%;  transform: rotate(360deg); }
+      100% { left: -30%;  transform: rotate(720deg); }
     }
     @keyframes slideLeftSpin {
-      0% { left: 100%; transform: rotate(0deg); }
-      50% { left: -30%; transform: rotate(360deg); }
-      100% { left: 100%; transform: rotate(720deg); }
+      0%   { left: 100%;  transform: rotate(0deg); }
+      50%  { left: -30%;  transform: rotate(360deg); }
+      100% { left: 100%;  transform: rotate(720deg); }
+    }
+
+    /* Vertical movers */
+    @keyframes floatDownSpin {
+      0%   { top: -30%;  transform: rotate(0deg); }
+      50%  { top: 100%;  transform: rotate(360deg); }
+      100% { top: -30%;  transform: rotate(720deg); }
+    }
+    @keyframes floatUpSpin {
+      0%   { bottom: -30%; transform: rotate(0deg); }
+      50%  { bottom: 100%; transform: rotate(360deg); }
+      100% { bottom: -30%; transform: rotate(720deg); }
+    }
+
+    /* make sure nothing scrolls accidentally on tiny screens */
+    @media (max-width: 640px) {
+      .featured { width: 70vw; height: 110vw; }
+      .meme1 { width: 28vw; }
+      .meme2, .meme3, .meme4 { width: 22vw; }
     }
   </style>
 </head>
@@ -99,12 +143,21 @@
   <div class="featured">
     <img src="Feature.jpeg" alt="">
   </div>
-  <!-- Meme images sliding across the screen -->
-  <div class="meme1">
-    <img src="IMG_5780.JPG" alt="peepee">
+
+  <!-- Old floaters (horizontal) -->
+  <div class="meme meme1">
+    <img src="IMG_5780.JPG" alt="">
   </div>
-  <div class="meme2">
-    <img src="JAKE1227.jpg" alt="poop">
+  <div class="meme meme2">
+    <img src="JAKE1227.jpg" alt="">
+  </div>
+
+  <!-- New floaters (vertical) -->
+  <div class="meme meme3">
+    <img src="6ka.gif" alt="">
+  </div>
+  <div class="meme meme4">
+    <img src="Gt1B-60W4AI6H1j.png" alt="">
   </div>
 </body>
 </html>
