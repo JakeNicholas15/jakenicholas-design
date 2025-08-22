@@ -26,47 +26,32 @@
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     }
 
-    /* ===== Top Frosted Marquee ===== */
+    /* ===== Top Super-Dark Frosted Marquee ===== */
     .marquee-wrap {
       position: fixed;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 100%;
       height: 64px;
-      z-index: 9999;                 /* above floaters and feature */
+      z-index: 9999; /* above floaters and feature */
       display: flex;
       align-items: center;
-      overflow: hidden;
+      justify-content: space-between;
+      gap: 12px;
       padding: 0 16px;
-      /* frosted panel */
-  background: rgba(255,255,255,0.8);
-  backdrop-filter: blur(15px) saturate(1.2);
-  -webkit-backdrop-filter: blur(15px) saturate(1.2);
-      box-shadow: 0 8px 30px rgba(0,0,0,.35);
-      border-bottom: 1px solid rgba(255,255,255,0.15);
-    }
-    /* Audio toggle button */
-#shepToggle{
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  z-index: 10000; /* above everything */
-  font: 600 14px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 0;
-  color: #111;
-  background: rgba(255,255,255,0.45);
-  backdrop-filter: blur(10px) saturate(1.2);
-  -webkit-backdrop-filter: blur(10px) saturate(1.2);
-  box-shadow: 0 8px 30px rgba(0,0,0,.25);
-  cursor: pointer;
-  transition: transform .15s ease, background .2s ease;
-}
-#shepToggle[aria-pressed="true"]{ background: rgba(255,255,255,0.7); }
-#shepToggle:active{ transform: scale(.97); }
 
+      /* very tinted glass */
+      background: rgba(0,0,0,0.72);
+      backdrop-filter: blur(16px) saturate(1.1) brightness(0.9);
+      -webkit-backdrop-filter: blur(16px) saturate(1.1) brightness(0.9);
+      box-shadow: 0 8px 30px rgba(0,0,0,.45);
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+    }
+    .marquee-left {
+      flex: 1 1 auto;
+      overflow: hidden;
+    }
     .marquee-track {
+      display: inline-block;
       white-space: nowrap;
       will-change: transform;
       animation: marquee 14s linear infinite;
@@ -76,14 +61,13 @@
       font-size: 34px;
       letter-spacing: 1px;
       margin-right: 48px; /* gap between repeats */
-      /* rainbow gradient text */
       background: linear-gradient(90deg,
         #ff3e6c, #ff00ff, #7a5cff, #00d8ff, #00ff88, #ffe600, #ff7a00, #ff3e6c);
       background-size: 200% 100%;
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
-      text-shadow: 0 0 12px rgba(255,255,255,0.25);
+      text-shadow: 0 0 16px rgba(255,255,255,0.18);
       animation: hueShift 6s linear infinite;
     }
     @keyframes marquee {
@@ -94,6 +78,29 @@
       0%   { filter: hue-rotate(0deg); }
       100% { filter: hue-rotate(360deg); }
     }
+
+    /* Audio toggle button (in marquee, right side) */
+    #shepToggle{
+      flex: 0 0 auto;
+      z-index: 10000;
+      font: 700 13px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 0;
+      color: #fff;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(10px) saturate(1.2);
+      -webkit-backdrop-filter: blur(10px) saturate(1.2);
+      box-shadow: 0 6px 20px rgba(0,0,0,.35), 0 0 18px rgba(0,255,200,.25);
+      cursor: pointer;
+      transition: transform .15s ease, background .2s ease, box-shadow .2s;
+    }
+    #shepToggle:hover { background: rgba(255,255,255,0.2); }
+    #shepToggle[aria-pressed="true"]{
+      background: rgba(0,255,200,0.22);
+      box-shadow: 0 6px 24px rgba(0,0,0,.35), 0 0 22px rgba(0,255,200,.45);
+    }
+    #shepToggle:active{ transform: scale(.97); }
 
     /* ===== Featured image (center) ===== */
     .featured {
@@ -251,13 +258,18 @@
 <body>
 
   <!-- Frosted marquee above everything -->
-  <div class="marquee-wrap" aria-hidden="true">
-    <div class="marquee-track">
-      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
-      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
-      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
-      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+  <div class="marquee-wrap" aria-hidden="false">
+    <div class="marquee-left">
+      <div class="marquee-track">
+        <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+        <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+        <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+        <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+      </div>
     </div>
+
+    <!-- Audio toggle button -->
+    <button id="shepToggle" aria-pressed="false" title="Play/Pause">🔊 play</button>
   </div>
 
   <!-- Central featured image -->
@@ -281,7 +293,10 @@
     <img src="Gt1B-60W4AI6H1j.png" alt="">
   </div>
 
-  <!-- Optional: scroll-to-zoom (keep if you added earlier) -->
+  <!-- Background audio (looped) -->
+  <audio id="bgAudio" src="Tate McRae - It's ok I'm ok.mp3" loop></audio>
+
+  <!-- Scroll-to-zoom -->
   <script>
   (() => {
     const el = document.querySelector(".featured img");
@@ -295,50 +310,44 @@
     }, { passive: false });
   })();
   </script>
-<script>
-(() => {
-  const audio = document.getElementById("bgAudio");
-  const btn   = document.getElementById("shepToggle");
-  if (!audio || !btn) return;
 
-  let playing = false;
+  <!-- Audio play/pause logic -->
+  <script>
+  (() => {
+    const audio = document.getElementById("bgAudio");
+    const btn   = document.getElementById("shepToggle");
+    if (!audio || !btn) return;
 
-  function setBtn() {
-    btn.setAttribute("aria-pressed", playing ? "true" : "false");
-    btn.textContent = playing ? "🔈 pause" : "🔊 play";
-  }
+    let playing = false;
 
-  btn.addEventListener("click", async () => {
-    try {
-      if (!playing) {
-        await audio.play();
-        playing = true;
-      } else {
-        audio.pause();
-        playing = false;
-      }
-      setBtn();
-    } catch (e) {
-      console.warn("Audio blocked until user interacts:", e);
+    function setBtn() {
+      btn.setAttribute("aria-pressed", playing ? "true" : "false");
+      btn.textContent = playing ? "🔈 pause" : "🔊 play";
     }
-  });
 
-  // Optional: press "S" to toggle playback
-  window.addEventListener("keydown", (e) => {
-    if ((e.key || "").toLowerCase() === "s") btn.click();
-  });
+    btn.addEventListener("click", async () => {
+      try {
+        if (!playing) {
+          await audio.play();
+          playing = true;
+        } else {
+          audio.pause();
+          playing = false;
+        }
+        setBtn();
+      } catch (e) {
+        console.warn("Audio blocked until user interacts:", e);
+      }
+    });
 
-  setBtn();
-})();
-</script>
-<!-- Audio toggle -->
-<button id="shepToggle" aria-pressed="false" title="Play/Pause">🔊 play</button>
+    // Optional: press "S" to toggle playback
+    window.addEventListener("keydown", (e) => {
+      if ((e.key || "").toLowerCase() === "s") btn.click();
+    });
 
-<!-- Background audio -->
-<audio id="bgAudio" src="tate-mcrae-its-ok-im-ok.mp3" loop></audio>
-<!-- If you kept the spaces, use:
-<audio id="bgAudio" src="Tate McRae - It's ok I'm ok.mp3" loop></audio>
--->
+    setBtn();
+  })();
+  </script>
 
 </body>
 </html>
