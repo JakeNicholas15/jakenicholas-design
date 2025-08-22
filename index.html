@@ -12,8 +12,8 @@
     body {
       background-image: url("DanielleTheWalker_BG.jpg"), url("DanielleTheWalker_BG.jpg");
       background-repeat: repeat;
-      background-size: 200px 200px;
-      background-position: 0 0, 100px 100px;
+      background-size: 100px 100px;
+      background-position: 0 0, 50px 50px;
       position: relative;
       font-family: sans-serif;
     }
@@ -22,10 +22,10 @@
       position: absolute;
       top: 50%;
       left: 50%;
-      width: 300px;
-      height: 300px;
+      width: 500px;
+      height: 800px;
       transform: translate(-50%, -50%);
-      animation: pulse 3s infinite, glow 5s infinite;
+      animation: pulse 2s infinite, glow 5s infinite;
       border-radius: 8px;
       overflow: hidden;
     }
@@ -44,7 +44,7 @@
       bottom: 15%;
       left: -30%;
       width: 20vw;
-      animation: slideRight 25s linear infinite;
+      animation: slideRightSpin 25s linear infinite;
     }
     .meme2 {
       top: 10%;
@@ -57,22 +57,7 @@
       height: auto;
       display: block;
     }
-    /* Scrolling text */
-    .marquee {
-      position: absolute;
-      bottom: 0;
-      width: 100%;
-      overflow: hidden;
-      background: rgba(0, 0, 0, 0.4);
-    }
-    .marquee span {
-      display: inline-block;
-      padding-left: 100%;
-      animation: marquee 15s linear infinite;
-      color: #ffffff;
-      font-size: 1.2rem;
-      line-height: 2rem;
-    }
+
     /* Animations */
     @keyframes pulse {
       0%, 100% {
@@ -96,18 +81,16 @@
         box-shadow: 0 0 40px 10px rgba(255,0,0,0.9);
       }
     }
-    @keyframes slideRight {
-      0% { left: -30%; }
-      100% { left: 100%; }
+
+        @keyframes slideRightSpin {
+      0% { right: 100%; transform: rotate(0deg); }
+      50% { right: -30%; transform: rotate(360deg); }
+      100% { right: 100%; transform: rotate(720deg); }
     }
     @keyframes slideLeftSpin {
       0% { left: 100%; transform: rotate(0deg); }
       50% { left: -30%; transform: rotate(360deg); }
       100% { left: 100%; transform: rotate(720deg); }
-    }
-    @keyframes marquee {
-      0% { transform: translateX(0); }
-      100% { transform: translateX(-100%); }
     }
   </style>
 </head>
@@ -118,14 +101,10 @@
   </div>
   <!-- Meme images sliding across the screen -->
   <div class="meme1">
-    <img src="IMG_5780.JPG" alt="">
+    <img src="IMG_5780.JPG" alt="peepee">
   </div>
   <div class="meme2">
-    <img src="JAKE1227.jpg" alt="">
-  </div>
-  <!-- Marquee text -->
-  <div class="marquee">
-    <span>⚡️ vibin' &amp; thrivin' ✌️ sheesh this site slaps 🚀</span>
+    <img src="JAKE1227.jpg" alt="poop">
   </div>
 </body>
 </html>
