@@ -45,6 +45,27 @@
       box-shadow: 0 8px 30px rgba(0,0,0,.35);
       border-bottom: 1px solid rgba(255,255,255,0.15);
     }
+    /* Audio toggle button */
+#shepToggle{
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 10000; /* above everything */
+  font: 600 14px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 0;
+  color: #111;
+  background: rgba(255,255,255,0.45);
+  backdrop-filter: blur(10px) saturate(1.2);
+  -webkit-backdrop-filter: blur(10px) saturate(1.2);
+  box-shadow: 0 8px 30px rgba(0,0,0,.25);
+  cursor: pointer;
+  transition: transform .15s ease, background .2s ease;
+}
+#shepToggle[aria-pressed="true"]{ background: rgba(255,255,255,0.7); }
+#shepToggle:active{ transform: scale(.97); }
+
     .marquee-track {
       white-space: nowrap;
       will-change: transform;
@@ -274,6 +295,50 @@
     }, { passive: false });
   })();
   </script>
+<script>
+(() => {
+  const audio = document.getElementById("bgAudio");
+  const btn   = document.getElementById("shepToggle");
+  if (!audio || !btn) return;
+
+  let playing = false;
+
+  function setBtn() {
+    btn.setAttribute("aria-pressed", playing ? "true" : "false");
+    btn.textContent = playing ? "🔈 pause" : "🔊 play";
+  }
+
+  btn.addEventListener("click", async () => {
+    try {
+      if (!playing) {
+        await audio.play();
+        playing = true;
+      } else {
+        audio.pause();
+        playing = false;
+      }
+      setBtn();
+    } catch (e) {
+      console.warn("Audio blocked until user interacts:", e);
+    }
+  });
+
+  // Optional: press "S" to toggle playback
+  window.addEventListener("keydown", (e) => {
+    if ((e.key || "").toLowerCase() === "s") btn.click();
+  });
+
+  setBtn();
+})();
+</script>
+<!-- Audio toggle -->
+<button id="shepToggle" aria-pressed="false" title="Play/Pause">🔊 play</button>
+
+<!-- Background audio -->
+<audio id="bgAudio" src="tate-mcrae-its-ok-im-ok.mp3" loop></audio>
+<!-- If you kept the spaces, use:
+<audio id="bgAudio" src="Tate McRae - It's ok I'm ok.mp3" loop></audio>
+-->
 
 </body>
 </html>
