@@ -52,6 +52,10 @@
       animation: hue 6s linear infinite, flicker 1.1s steps(2, end) infinite;
       filter: saturate(1.4) contrast(1.05);
     }
+        .featured img {
+      transform: scale(var(--zoom, 1));
+      will-change: transform;
+    }
 
     /* Layer 1 glow: thick RGB box-shadow that cycles */
     .featured::after {
@@ -232,8 +236,20 @@
     s.style.left = (e.clientX + 4) + "px";
     s.style.top  = (e.clientY + 4) + "px";
     document.body.appendChild(s);
-    setTimeout(() => s.remove(), 800);
+    setTimeout(() => s.remove(), 900);
   });
+})();
+</script>
+  <script>
+(() => {
+  const el = document.querySelector(".featured img");
+  let zoom = 1;
+  window.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    zoom += (e.deltaY > 0 ? -0.05 : 0.05);
+    zoom = Math.max(0.6, Math.min(1.5, zoom));
+    el.style.setProperty("--zoom", zoom);
+  }, { passive: false });
 })();
 </script>
 </body>
