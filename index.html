@@ -3,41 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <title>Danielle the Walker</title>
+
+  <!-- Hobo-ish vibe via Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&display=swap" rel="stylesheet">
+
   <style>
     html, body {
       margin: 0;
       height: 100%;
       overflow: hidden;
     }
-    #shepToggle{
-  position: fixed;
-  left: 16px;
-  bottom: 16px;
-  z-index: 9999;
-  font: 600 25px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 0;
-  color: #111;
-  background: #fff8;
-  backdrop-filter: blur(8px);
-  box-shadow: 0 8px 30px rgba(0,0,0,.25);
-  cursor: pointer;
-  transition: transform .15s ease, background .2s ease;
-}
-#shepToggle[aria-pressed="true"]{ background:#ffe7; }
-#shepToggle:active{ transform: scale(2); }
 
-.spark {
-  position: fixed;
-  pointer-events: none;
-  font-size: 20px;
-  filter: drop-shadow(0 0 8px rgba(255,255,255,.9));
-  animation: spark-fade .8s ease-out forwards;
-}
-@keyframes spark-fade {
-  to { transform: translateY(-20px) scale(.7); opacity: 0; }
-}
     /* Tiled checker bg */
     body {
       background-image: url("DanielleTheWalker_BG.jpg"), url("DanielleTheWalker_BG.jpg");
@@ -46,6 +24,54 @@
       background-position: 0 0, 25px 25px;
       position: relative;
       font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    /* ===== Top Frosted Marquee ===== */
+    .marquee-wrap {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 64px;
+      z-index: 9999;                 /* above floaters and feature */
+      display: flex;
+      align-items: center;
+      overflow: hidden;
+      padding: 0 16px;
+      /* frosted panel */
+      background: rgba(0,0,0,0.28);
+      backdrop-filter: blur(10px) saturate(1.1);
+      -webkit-backdrop-filter: blur(10px) saturate(1.1);
+      box-shadow: 0 8px 30px rgba(0,0,0,.35);
+      border-bottom: 1px solid rgba(255,255,255,0.15);
+    }
+    .marquee-track {
+      white-space: nowrap;
+      will-change: transform;
+      animation: marquee 14s linear infinite;
+    }
+    .marquee-text {
+      font-family: "Chewy", "Baloo 2", "Luckiest Guy", cursive, sans-serif;
+      font-size: 34px;
+      letter-spacing: 1px;
+      margin-right: 48px; /* gap between repeats */
+      /* rainbow gradient text */
+      background: linear-gradient(90deg,
+        #ff3e6c, #ff00ff, #7a5cff, #00d8ff, #00ff88, #ffe600, #ff7a00, #ff3e6c);
+      background-size: 200% 100%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow: 0 0 12px rgba(255,255,255,0.25);
+      animation: hueShift 6s linear infinite;
+    }
+    @keyframes marquee {
+      0%   { transform: translateX(0%); }
+      100% { transform: translateX(-50%); }
+    }
+    @keyframes hueShift {
+      0%   { filter: hue-rotate(0deg); }
+      100% { filter: hue-rotate(360deg); }
     }
 
     /* ===== Featured image (center) ===== */
@@ -59,7 +85,6 @@
       border-radius: 12px;
       overflow: hidden;
       z-index: 3;
-      /* gentle scale so the psychedelia sits on top */
       animation: pulse 2s ease-in-out infinite;
     }
     .featured img {
@@ -67,14 +92,11 @@
       height: 100%;
       object-fit: cover;
       display: block;
-      /* CRAZY: hue cycle + light flicker */
-      animation: hue 6s linear infinite, flicker 1.1s steps(2, end) infinite;
+      animation: hue 6s linear infinite, flicker 1.1s steps(2,end) infinite;
       filter: saturate(1.4) contrast(1.05);
       transform: scale(var(--zoom, 1));
       will-change: transform;
     }
-
-    /* Layer 1 glow: thick RGB box-shadow that cycles */
     .featured::after {
       content: "";
       position: absolute;
@@ -83,11 +105,10 @@
       pointer-events: none;
       animation: glowRGB 3.5s linear infinite;
     }
-    /* Layer 2 glow ring: neon conic-gradient ring that spins + breathes */
     .featured::before {
       content: "";
       position: absolute;
-      inset: -28px;                 /* extends past the image */
+      inset: -28px;
       border-radius: inherit;
       background: conic-gradient(
         from 0deg,
@@ -101,7 +122,7 @@
       animation: ringSpin 4s linear infinite, pulseRing 2s ease-in-out infinite;
     }
 
-    /* ===== Floaters base ===== */
+    /* ===== Floaters ===== */
     .meme {
       position: absolute;
       z-index: 5;
@@ -114,15 +135,15 @@
       pointer-events: none;
     }
 
-    /* Old two (horizontal) */
-    .meme1 {                /* left -> right */
+    /* old two (horizontal) */
+    .meme1 { /* left -> right */
       bottom: 15%;
       left: -30%;
       width: 15vw;
       animation: slideRightSpin 25s linear infinite;
       filter: drop-shadow(0 0 24px rgba(255, 64, 64, 1)) drop-shadow(0 0 60px rgba(255, 64, 64, .9));
     }
-    .meme2 {                /* right -> left */
+    .meme2 { /* right -> left */
       top: 10%;
       left: 100%;
       width: 10vw;
@@ -130,15 +151,15 @@
       filter: drop-shadow(0 0 24px rgba(64, 255, 120, 1)) drop-shadow(0 0 60px rgba(64, 255, 120, .9));
     }
 
-    /* New two (vertical) */
-    .meme3 {                /* top -> bottom */
+    /* new two (vertical) */
+    .meme3 { /* top -> bottom */
       top: -30%;
       left: 10%;
       width: 12vw;
       animation: floatDownSpin 28s linear infinite;
       filter: drop-shadow(0 0 24px rgba(80, 150, 255, 1)) drop-shadow(0 0 60px rgba(80, 150, 255, .9));
     }
-    .meme4 {                /* bottom -> top */
+    .meme4 { /* bottom -> top */
       bottom: -30%;
       right: 12%;
       width: 12vw;
@@ -151,26 +172,16 @@
       0%, 100% { transform: translate(-50%, -50%) scale(1); }
       50%      { transform: translate(-50%, -50%) scale(1.12); }
     }
-
-    /* strobe / CRT-ish flicker */
     @keyframes flicker {
-      0% { opacity: 1; }
-      8% { opacity: .85; }
-      9% { opacity: 1; }
-      30% { opacity: .9; }
-      31% { opacity: 1; }
-      70% { opacity: .88; }
-      71% { opacity: 1; }
+      0% { opacity: 1; } 8% { opacity: .85; } 9% { opacity: 1; }
+      30% { opacity: .9; } 31% { opacity: 1; }
+      70% { opacity: .88; } 71% { opacity: 1; }
       100% { opacity: 1; }
     }
-
-    /* hue rotation for the feature image */
     @keyframes hue {
       from { filter: hue-rotate(0deg) saturate(1.6) contrast(1.08); }
       to   { filter: hue-rotate(360deg) saturate(1.6) contrast(1.08); }
     }
-
-    /* big RGB box-shadow cycles */
     @keyframes glowRGB {
       0%   { box-shadow: 0 0 40px 14px rgba(255,0,64,.95), 0 0 80px 30px rgba(255,0,64,.8); }
       25%  { box-shadow: 0 0 50px 18px rgba(0,255,128,.95), 0 0 90px 34px rgba(0,255,128,.8); }
@@ -178,18 +189,12 @@
       75%  { box-shadow: 0 0 55px 20px rgba(255,220,0,.95), 0 0 100px 40px rgba(255,220,0,.8); }
       100% { box-shadow: 0 0 40px 14px rgba(255,0,64,.95), 0 0 80px 30px rgba(255,0,64,.8); }
     }
-
-    /* neon ring spin + breathe */
-    @keyframes ringSpin {
-      from { transform: rotate(0deg) scale(1); }
-      to   { transform: rotate(360deg) scale(1); }
-    }
+    @keyframes ringSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes pulseRing {
-      0%,100% { opacity: .85; transform: rotate(var(--r,0)) scale(1); }
-      50%     { opacity: 1;    transform: rotate(var(--r,0)) scale(1.08); }
+      0%,100% { opacity: .85; transform: scale(1); }
+      50%     { opacity: 1;    transform: scale(1.08); }
     }
 
-    /* Horizontal movers */
     @keyframes slideRightSpin {
       0%   { left: -30%; transform: rotate(0deg); }
       50%  { left: 100%; transform: rotate(360deg); }
@@ -201,7 +206,6 @@
       100% { left: 100%; transform: rotate(720deg); }
     }
 
-    /* Vertical movers */
     @keyframes floatDownSpin {
       0%   { top: -30%;  transform: rotate(0deg); }
       50%  { top: 100%;  transform: rotate(360deg); }
@@ -218,10 +222,23 @@
       .featured { width: 70vw; height: 110vw; }
       .meme1 { width: 28vw; }
       .meme2, .meme3, .meme4 { width: 22vw; }
+      .marquee-text { font-size: 26px; }
+      .marquee-wrap { height: 56px; }
     }
   </style>
 </head>
 <body>
+
+  <!-- Frosted marquee above everything -->
+  <div class="marquee-wrap" aria-hidden="true">
+    <div class="marquee-track">
+      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+      <span class="marquee-text">WELCOME TO DANIELLE THE WALKER DOT COM!!!</span>
+    </div>
+  </div>
+
   <!-- Central featured image -->
   <div class="featured">
     <img src="Feature.jpeg" alt="">
@@ -242,132 +259,21 @@
   <div class="meme meme4">
     <img src="Gt1B-60W4AI6H1j.png" alt="">
   </div>
+
+  <!-- Optional: scroll-to-zoom (keep if you added earlier) -->
   <script>
-(() => {
-  const EMOJIS = ["✨","🌈","💖","💫","🪩","⭐️","🎉","🌀"];
-  let i = 0;
-  window.addEventListener("mousemove", e => {
-    const s = document.createElement("span");
-    s.className = "spark";
-    s.textContent = EMOJIS[i++ % EMOJIS.length];
-    s.style.left = (e.clientX + 4) + "px";
-    s.style.top  = (e.clientY + 4) + "px";
-    document.body.appendChild(s);
-    setTimeout(() => s.remove(), 900);
-  });
-})();
-</script>
-  <script>
-(() => {
-  const el = document.querySelector(".featured img");
-  let zoom = 1;
-  window.addEventListener("wheel", (e) => {
-    e.preventDefault();
-    zoom += (e.deltaY > 0 ? -0.05 : 0.05);
-    zoom = Math.max(0.6, Math.min(1.5, zoom));
-    el.style.setProperty("--zoom", zoom);
-  }, { passive: false });
-})();
-</script>
-  <button id="shepToggle" aria-pressed="false" title="Toggle Shepard Tone">🔊👂</button>
-<script>
-(() => {
-  // Clean falling Shepard tone — calmer, clearer
-  let ctx, master, playing = false, rafId = null;
-
-  // Tunables (start conservative):
-  const BASE_FREQ = 65.41;  // C2-ish; avoids sub-bass mud on phone speakers
-  const OCTAVES   = 5;      // total range
-  const VOICES    = 8;      // fewer = clearer
-  const SPEED     = 0.015;  // slower glide
-  const GAIN      = 0.08;   // quieter overall
-  const SIGMA     = 0.22;   // wider bell = smoother
-
-  const osc = [];
-  const gains = [];
-  const pans = [];
-  let phase = 0;
-
-  function init() {
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
-    master = ctx.createGain();
-    master.gain.value = 0;
-    master.connect(ctx.destination);
-
-    for (let i = 0; i < VOICES; i++) {
-      const o = ctx.createOscillator();
-      o.type = "sine";
-      const g = ctx.createGain();
-      g.gain.value = 0;
-      const p = ctx.createStereoPanner();
-      // spread voices left->right
-      p.pan.value = -0.8 + (1.6 * i) / (VOICES - 1);
-
-      o.connect(g).connect(p).connect(master);
-      o.start();
-      osc.push(o); gains.push(g); pans.push(p);
-    }
-  }
-
-  // Smooth Gaussian envelope (pos in 0..1)
-  function gauss(pos, mu = 0.5, sigma = SIGMA) {
-    const t = (pos - mu) / sigma;
-    return Math.exp(-0.5 * t * t);
-  }
-
-  function setFrame(p) {
-    const t = ctx.currentTime;
-    for (let i = 0; i < VOICES; i++) {
-      const pos = (p + i / VOICES) % 1; // stagger voices
-      const f = BASE_FREQ * Math.pow(2, pos * OCTAVES);
-      const a = gauss(pos) * GAIN;
-
-      // smoother changes
-      osc[i].frequency.setTargetAtTime(f, t, 0.02);
-      gains[i].gain.setTargetAtTime(a, t, 0.03);
-    }
-  }
-
-  function tick() {
-    phase -= SPEED; if (phase < 0) phase += 1;
-    setFrame(phase);
-    rafId = requestAnimationFrame(tick);
-  }
-
-  function fade(to, secs = 0.35) {
-    const t = ctx.currentTime;
-    master.gain.cancelScheduledValues(t);
-    master.gain.setValueAtTime(master.gain.value, t);
-    master.gain.linearRampToValueAtTime(to, t + secs);
-  }
-
-  async function start() {
-    if (!ctx) init();
-    if (ctx.state === "suspended") await ctx.resume();
-    if (!playing) {
-      playing = true;
-      document.getElementById("shepToggle").setAttribute("aria-pressed", "true");
-      fade(1.0);
-      if (!rafId) rafId = requestAnimationFrame(tick);
-    }
-  }
-
-  function stop() {
-    if (!playing) return;
-    playing = false;
-    document.getElementById("shepToggle").setAttribute("aria-pressed", "false");
-    fade(0.0);
-    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
-  }
-
-  const btn = document.getElementById("shepToggle");
-  btn.addEventListener("click", () => (playing ? stop() : start()));
-  window.addEventListener("keydown", (e) => {
-    if ((e.key || "").toLowerCase() === "s") (playing ? stop() : start());
-  });
-})();
-</script>
-
+  (() => {
+    const el = document.querySelector(".featured img");
+    if (!el) return;
+    let zoom = 1;
+    window.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      zoom += (e.deltaY > 0 ? -0.05 : 0.05);
+      zoom = Math.max(0.6, Math.min(1.5, zoom));
+      el.style.setProperty("--zoom", zoom);
+    }, { passive: false });
+  })();
+  </script>
 
 </body>
 </html>
