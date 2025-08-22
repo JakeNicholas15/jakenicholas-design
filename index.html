@@ -9,7 +9,16 @@
       height: 100%;
       overflow: hidden;
     }
-
+.spark {
+  position: fixed;
+  pointer-events: none;
+  font-size: 20px;
+  filter: drop-shadow(0 0 8px rgba(255,255,255,.9));
+  animation: spark-fade .8s ease-out forwards;
+}
+@keyframes spark-fade {
+  to { transform: translateY(-20px) scale(.7); opacity: 0; }
+}
     /* Tiled checker bg */
     body {
       background-image: url("DanielleTheWalker_BG.jpg"), url("DanielleTheWalker_BG.jpg");
@@ -212,5 +221,20 @@
   <div class="meme meme4">
     <img src="Gt1B-60W4AI6H1j.png" alt="">
   </div>
+  <script>
+(() => {
+  const EMOJIS = ["✨","🌈","💖","💫","🪩","⭐️","🎉","🌀"];
+  let i = 0;
+  window.addEventListener("mousemove", e => {
+    const s = document.createElement("span");
+    s.className = "spark";
+    s.textContent = EMOJIS[i++ % EMOJIS.length];
+    s.style.left = (e.clientX + 4) + "px";
+    s.style.top  = (e.clientY + 4) + "px";
+    document.body.appendChild(s);
+    setTimeout(() => s.remove(), 800);
+  });
+})();
+</script>
 </body>
 </html>
