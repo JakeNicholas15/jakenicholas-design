@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rolling Dani — DanielleTheWalker.com</title>
+  <style>
+    html,body{height:100%;margin:0;background:#67b0ff;color:#fff;overflow:hidden;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    canvas{display:block;width:100vw;height:100vh;}
+    .hud{
+      position:fixed;top:10px;left:12px;color:#fff;font-weight:600;font-size:14px;
+      text-shadow:0 1px 2px rgba(0,0,0,.5);user-select:none;pointer-events:none;
+    }
+    .back-btn{
+      position:fixed;bottom:18px;left:18px;width:52px;height:52px;border-radius:50%;
+      background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);
+      backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+      display:grid;place-items:center;cursor:pointer;color:#fff;font-size:22px;
+      box-shadow:0 6px 24px rgba(0,0,0,.35);
+    }
+    .back-btn:hover{transform:translateY(-1px);}
+  </style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div class="hud" id="hud">SPACE to jump • Hold for higher jump</div>
+<a class="back-btn" href="../../"><span>↩︎</span></a>
+<script>
+(() => {
+  const canvas = document.getElementById('game');
+  const ctx = canvas.getContext('2d');
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  let W = 0, H = 0;
+  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+  const BALL_RADIUS_DESKTOP = 125; // 250px diameter
+  const BALL_RADIUS_MOBILE  = 80;  // ~160px diameter
+  const BALL_RADIUS = isMobile ? BALL_RADIUS_MOBILE : BALL_RADIUS_DESKTOP;
+  const CAMERA_SCALE = isMobile ? 0.9 : 1.0;
+  function resize(){
+    W = Math.floor(innerWidth * DPR);
+    H = Math.floor(innerHeight * DPR);
+    canvas.width = W;
+    canvas.height = H;
+    canvas.style.width = innerWidth + 'px';
+    canvas.style.height = innerHeight + 'px';
+  }
+  addEventListener('resize', resize, { passive:true });
+  resize();
+  // Load assets
+  const imgBall = new Image();
+  imgBall.src = '../../DaniBall.png';
+  const obstacleImgs = [
+    '../../obsticle%201%20coconut.png',
+    '../../obsticle%202%20pickle.png',
+    '../../obsticle%203%20tomato.png'
+  ].map(src => { const i = new Image(); i.src = src; return i; });
+  // Physics constants
+  const g = 2600;
+  const maxSlope = 0.022;
+  const slopeRampSecs = 18;
+  let groundY0 = H * 0.55;
+  const ball = { x:0, y:0, vx:320, vy:0, r: BALL_RADIUS * DPR, angle:0, grounded:true };
+  const camera = { x:0, y:0 };
+  const obstacles = [];
+  const OB_MIN_GAP = 500;
+  const OB_MAX_GAP = 1000;
+  const OB_BASE_SIZE = 110;
+  let startedAt = performance.now();
+  let gameOver = false;
+  // Procedural slope
+  function currentSlope(t){
+    const k = Math.min(t/slopeRampSecs, 1);
+    const eased = k*k*(3 - 2*k);
+    return -(0.003 + (maxSlope - 0.003)*eased);
+  }
+  function groundHeight(x){
+    const t = (performance.now() - startedAt)/1000;
+    const m = currentSlope(t);
+    return groundY0 + m * x;
+  }
+  function reset(){
+    ball.x = 0;
+    ball.y = groundHeight(ball.x) - ball.r;
+    ball.vx = 260;
+    ball.vy = 0;
+    ball.angle = 0;
+    ball.grounded = true;
+    camera.x = -innerWidth * 0.25 * DPR;
+    camera.y = 0;
+    obstacles.length = 0;
+    spawnObstacles(ball.x + 800, ball.x + 8000);
+    startedAt = performance.now();
+    gameOver = false;
+  }
+  function spawnObstacles(fromX, toX){
+    let x = fromX;
+    while(x < toX){
+      const img = obstacleImgs[(Math.random()*obstacleImgs.length)|0];
+      const size = (OB_BASE_SIZE + Math.random()*70) * DPR;
+      const y = groundHeight(x) - size;
+      obstacles.push({ x:x, y:y, w:size*0.8, h:size, img:img });
+      x += OB_MIN_GAP + Math.random()*(OB_MAX_GAP - OB_MIN_GAP);
+    }
+  }
+  // Input
+  let jumpKeyDown = false;
+  let jumpCharge = 0;
+  const MAX_HOLD = 220;
+  const MIN_JUMP_VEL = 900;
+  const EXTRA_PER_MS = 3.2;
+  function beginJump(){
+    if(!ball.grounded) return;
+    ball.grounded = false;
+    jumpCharge = 0;
+    ball.vy = -MIN_JUMP_VEL;
+  }
+  addEventListener('keydown', (e) => {
+    if(e.code === 'Space'){
+      if(!jumpKeyDown) beginJump();
+      jumpKeyDown = true;
+      e.preventDefault();
+    }
+    if(gameOver && (e.code === 'Space' || e.code === 'Enter')) reset();
+  }, { passive:false });
+  addEventListener('keyup', (e) => {
+    if(e.code === 'Space') jumpKeyDown = false;
+  }, { passive:true });
+  // Touch
+  addEventListener('touchstart', () => { beginJump(); jumpKeyDown = true; }, { passive:true });
+  addEventListener('touchend', () => { jumpKeyDown = false; }, { passive:true });
+  // Collision detection
+  function collidesCircleRect(cx, cy, r, rx, ry, rw, rh){
+    const closestX = Math.max(rx, Math.min(cx, rx+rw));
+    const closestY = Math.max(ry, Math.min(cy, ry+rh));
+    const dx = cx - closestX;
+    const dy = cy - closestY;
+    return (dx*dx + dy*dy) < r*r;
+  }
+  let lastTime = performance.now();
+  function step(){
+    const now = performance.now();
+    let dt = (now - lastTime) / 1000;
+    lastTime = now;
+    if(dt > 0.033) dt = 0.033;
+    // update physics
+    const tSec = (now - startedAt)/1000;
+    const slope = currentSlope(tSec);
+    const slopeAngle = Math.atan(slope);
+    const ax = g * Math.sin(slopeAngle) * 0.9;
+    const ay = g;
+    if(!ball.grounded && jumpKeyDown && jumpCharge < MAX_HOLD){
+      const add = EXTRA_PER_MS * (dt*1000);
+      ball.vy -= add;
+      jumpCharge += dt*1000;
+    }
+    ball.vx += ax * dt;
+    ball.x  += ball.vx * dt;
+    ball.vy += ay * dt;
+    ball.y  += ball.vy * dt;
+    const gy = groundHeight(ball.x);
+    if(ball.y > gy - ball.r){
+      ball.y = gy - ball.r;
+      if(ball.vy > 0) ball.vy = 0;
+      ball.grounded = true;
+    } else {
+      ball.grounded = false;
+    }
+    ball.angle += (ball.vx / ball.r) * dt;
+    const lead = 280 * DPR;
+    camera.x += ((ball.x - camera.x) - (innerWidth*DPR/2 - lead)) * 0.06;
+    camera.y += ((ball.y - camera.y) - (innerHeight*DPR/2)) * 0.06;
+    const far = ball.x + 7000;
+    if(obstacles.length === 0 || obstacles[obstacles.length-1].x < far){
+      spawnObstacles(far, far+8000);
+    }
+    for(const o of obstacles){
+      const oy = groundHeight(o.x) - o.h;
+      if(collidesCircleRect(ball.x, ball.y, ball.r*0.85, o.x, oy, o.w, o.h)){
+        gameOver = true;
+      }
+    }
+    drawWorld();
+    requestAnimationFrame(step);
+  }
+  function drawWorld(){
+    ctx.save();
+    ctx.setTransform(CAMERA_SCALE*DPR, 0, 0, CAMERA_SCALE*DPR, -camera.x*CAMERA_SCALE, -camera.y*CAMERA_SCALE);
+    // Sky
+    ctx.fillStyle = '#67b0ff';
+    ctx.fillRect(camera.x - 4000, camera.y - 4000, innerWidth*DPR/CAMERA_SCALE + 8000, innerHeight*DPR/CAMERA_SCALE + 8000);
+    // Ground
+    const tSec = (performance.now() - startedAt)/1000;
+    const m = currentSlope(tSec);
+    const x0 = camera.x - 2000;
+    const x1 = camera.x + innerWidth*DPR/CAMERA_SCALE + 4000;
+    const y0 = groundY0 + m * x0;
+    const y1 = groundY0 + m * x1;
+    ctx.fillStyle = '#2ecc40';
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.lineTo(x1, y1 + 6000);
+    ctx.lineTo(x0, y0 + 6000);
+    ctx.closePath();
+    ctx.fill();
+    // Obstacles
+    for(const o of obstacles){
+      const oy = groundHeight(o.x) - o.h;
+      if(o.img.complete && o.img.naturalWidth > 0){
+        const aspect = o.img.naturalHeight / o.img.naturalWidth;
+        const w = o.w, h = w * aspect;
+        ctx.drawImage(o.img, o.x - w*0.1, oy - (h - o.h), w, h);
+      } else {
+        ctx.fillStyle = 'rgba(0,0,0,.5)';
+        ctx.fillRect(o.x, oy, o.w, o.h);
+      }
+    }
+    // Ball
+    ctx.save();
+    ctx.translate(ball.x, ball.y);
+    ctx.rotate(ball.angle);
+    const r = ball.r;
+    if(imgBall.complete && imgBall.naturalWidth > 0){
+      ctx.drawImage(imgBall, -r, -r, r*2, r*2);
+    } else {
+      ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(0,0,r,0,Math.PI*2); ctx.fill();
+    }
+    ctx.restore();
+    ctx.restore();
+    // HUD
+    const hud = document.getElementById('hud');
+    if(gameOver){
+      hud.textContent = 'Oof! Press SPACE (or tap) to restart';
+    } else {
+      hud.textContent = 'SPACE to jump • Hold for higher jump';
+    }
+  }
+  reset();
+  requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
