@@ -1,191 +1,260 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>DanielleTheWalker.com — Gallery</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <!-- Use Inter font for modern, clean typography -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
-  <style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DanielleTheWalker.com — Gallery</title>
+
+<!-- Modern sans; light weights on homepage -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* Smooth + plush 750ms animation */
+    --tile-anim: 0.75s cubic-bezier(.22,.61,.36,1);
+    /* Row heights (tweak anytime) */
+    --tile-collapsed-h: 14vh;
+    --tile-expanded-h:  46vh;
+    /* Layout */
+    --page-bg: #000;
+    --bar-h: 60px;
+  }
+
+  /* Accessibility: shorter motion if the user prefers */
+  @media (prefers-reduced-motion: reduce){
+    :root { --tile-anim: 0.2s linear; }
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height:100%; }
+  body{
+    margin:0;
+    background: var(--page-bg);
+    color:#eaeaea;
+    font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-weight:300; /* lighter look per your request */
+    overflow-x:hidden;
+  }
+
+  /* Top bar */
+  .topbar{
+    position: sticky; top:0; z-index: 10;
+    height: var(--bar-h);
+    background:#000;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+    display:flex; align-items:center;
+    padding: 0 18px;
+  }
+  .brand{
+    font-size: clamp(18px, 2.2vw, 26px);
+    letter-spacing:.2px; font-weight:400; color:#fafafa;
+  }
+
+  /* Gallery column */
+  .gallery{
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px 0 80px; /* bottom space for OS bars */
+  }
+
+  /* Each full-width row/tile */
+  .tile{
+    position: relative;
+    width: 100%;
+    height: var(--tile-collapsed-h);
+    overflow: hidden;
+    background: #111;
+    isolation: isolate;
+    will-change: height, transform, filter, box-shadow, opacity;
+    transition:
+      height var(--tile-anim),
+      transform var(--tile-anim),
+      filter var(--tile-anim),
+      box-shadow var(--tile-anim),
+      opacity var(--tile-anim);
+    border-block: 1px solid rgba(255,255,255,.06);
+  }
+
+  /* Expanded state */
+  .tile:hover,
+  .tile:focus-within,
+  .tile.is-open {
+    height: var(--tile-expanded-h);
+  }
+
+  /* Make the content fill the tile */
+  .tile > a{
+    position:absolute; inset:0; display:block; text-decoration:none; color:inherit;
+  }
+
+  /* Thumbnail image */
+  .thumb{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit: cover;
+    filter: saturate(1.05) contrast(1.02);
+    transform: scale(1);
+    transition:
+      transform var(--tile-anim),
+      filter var(--tile-anim),
+      opacity var(--tile-anim);
+    will-change: transform, filter, opacity;
+  }
+
+  /* Slight zoom on expand */
+  .tile:hover .thumb,
+  .tile.is-open .thumb,
+  .tile:focus-within .thumb {
+    transform: scale(1.03);
+    filter: saturate(1.15) contrast(1.06);
+  }
+
+  /* Title overlay (subtle) */
+  .title{
+    position:absolute; left:16px; bottom:14px; z-index:2;
+    padding: 8px 12px;
+    font-weight:400;
+    font-size: clamp(16px, 1.8vw, 22px);
+    color:#fff;
+    background: rgba(0,0,0,.35);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 10px;
+    box-shadow: 0 8px 22px rgba(0,0,0,.35);
+    transition: transform var(--tile-anim), opacity var(--tile-anim);
+  }
+
+  /* A faint gradient at the bottom for legibility */
+  .fade{
+    position:absolute; inset:0;
+    background: linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 45%);
+    z-index:1; pointer-events:none;
+    opacity:.9;
+    transition: opacity var(--tile-anim);
+  }
+  .tile:hover .fade,
+  .tile.is-open .fade,
+  .tile:focus-within .fade { opacity:1; }
+
+  /* Mobile tweaks: little taller collapsed rows so taps feel easier */
+  @media (max-width: 680px){
     :root{
-      /* Home row heights: collapsed roughly 30% taller than original and expanded to half the viewport */
-      --row-collapsed: 94px;
-      --row-expanded: 50vh;
-      --ease: cubic-bezier(.2,.8,.2,1);
+      --tile-collapsed-h: 18vh;
+      --tile-expanded-h:  52vh;
     }
-    *{ box-sizing: border-box; }
-    html, body{ margin:0; padding:0; background:#000; color:#fff; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
-    /* Sticky header */
-    .topbar{
-      position: sticky; top:0; z-index:10;
-      height:64px; display:flex; align-items:center;
-      padding:0 24px;
-      background:#000;
-      border-bottom:1px solid rgba(255,255,255,0.1);
-    }
-    .brand{
-      font-weight:300;
-      letter-spacing:.5px;
-      font-size:24px;
-      color:#eaeaea;
-    }
-    .stack{ margin:0; padding:0; list-style:none; }
-    .row{
-      position:relative;
-      overflow:hidden;
-      max-height:var(--row-collapsed);
-      transition:max-height 600ms var(--ease);
-      border-bottom:1px solid rgba(255,255,255,0.06);
-      will-change:max-height;
-    }
-    /* Expand on hover/focus for desktop */
-    .row:hover,
-    .row:focus-within{
-      max-height:var(--row-expanded);
-    }
-    /* Expand via JS for mobile by adding this class */
-    .row.expanded{
-      max-height:var(--row-expanded);
-    }
-    .row > a{
-      display:block; width:100%; height:var(--row-expanded);
-      text-decoration:none; color:inherit; outline:none;
-    }
-    .bg{
-      position:absolute; inset:0;
-      background-size:cover; background-position:center;
-      filter:brightness(0.9) contrast(1.05) saturate(1.1);
-      transform:translateZ(0);
-    }
-    .shade{
-      position:absolute; inset:0;
-      background:radial-gradient(ellipse at 50% 40%, rgba(0,0,0,.05), rgba(0,0,0,.35) 70%);
-      pointer-events:none;
-    }
-    .label{
-      position:absolute;
-      left:24px;
-      top:16px;
-      padding:10px 14px;
-      border-radius:999px;
-      /* Lighter label weight */
-      font:400 14px/1 Inter, system-ui, sans-serif;
-      background:rgba(0,0,0,0.55);
-      border:1px solid rgba(255,255,255,0.12);
-      backdrop-filter:blur(8px) saturate(1.2);
-      -webkit-backdrop-filter:blur(8px) saturate(1.2);
-      color:#fff;
-      letter-spacing:.3px;
-      box-shadow:0 8px 24px rgba(0,0,0,.35);
-      transition:transform 200ms var(--ease);
-    }
-    .row:hover .label{ transform:translateY(-2px); }
-    .placeholder-1{ background:linear-gradient(#4a4a4a,#444); }
-    .placeholder-2{ background:linear-gradient(#6a6a6a,#5c5c5c); }
-    .placeholder-3{ background:linear-gradient(#8a8a8a,#7c7c7c); }
-    .placeholder-4{ background:linear-gradient(#a9a9a9,#9b9b9b); }
-    .placeholder-5{ background:linear-gradient(#cfcfcf,#c1c1c1); }
-    .row > a:focus-visible .label{
-      box-shadow:0 0 0 3px rgba(0,255,208,.5), 0 8px 24px rgba(0,0,0,.35);
-    }
-    @media (max-width: 640px){
-      /* Adjust collapsed height for mobile; bigger collapsed rows make tapping easier */
-      :root{ --row-collapsed: 72px; --row-expanded: 60vh; }
-      .topbar{ height:56px; }
-      .brand{ font-size:20px; }
-      .label{
-        top:12px; left:12px;
-        font-size:13px;
-        padding:8px 12px;
-      }
-    }
-  </style>
+    .topbar{ height: 56px; }
+  }
+</style>
 </head>
 <body>
-  <header class="topbar">
+
+  <!-- Top black bar -->
+  <div class="topbar">
     <div class="brand">DanielleTheWalker.com</div>
-  </header>
-  <ul class="stack">
-    <!-- Project rows: thumbnail and label; update the image paths to match your repository structure -->
-    <li class="row" data-row>
-      <a href="projects/danielle-doin-things/">
-        <div class="bg" style="background-image:url('danielle-doin-things.jpg');"></div>
-        <div class="shade"></div>
-        <span class="label">Danielle Doin Things</span>
+  </div>
+
+  <!-- Gallery -->
+  <main class="gallery" id="gallery">
+
+    <!-- Danielle Doin Things -->
+    <section class="tile" data-href="projects/danielle-doin-things/">
+      <a href="projects/danielle-doin-things/" aria-label="Open Danielle Doin Things">
+        <!-- Replace the src below with your real thumbnail file if different -->
+        <img class="thumb" src="projects/danielle-doin-things/thumbnail.jpg" alt="Danielle Doin Things thumbnail">
+        <div class="fade"></div>
+        <div class="title">Danielle Doin Things</div>
       </a>
-    </li>
-    <li class="row" data-row>
-      <a href="projects/danielle-flies/">
-        <div class="bg" style="background-image:url('DaniFlies_thumb.png');"></div>
-        <div class="shade"></div>
-        <span class="label">Danielle Flies</span>
+    </section>
+
+    <!-- Danielle Flies -->
+    <section class="tile" data-href="projects/danielle-flies/">
+      <a href="projects/danielle-flies/" aria-label="Open Danielle Flies">
+        <!-- You said this exists: DaniFlies_thumb.png -->
+        <img class="thumb" src="projects/danielle-flies/DaniFlies_thumb.png" alt="Danielle Flies thumbnail">
+        <div class="fade"></div>
+        <div class="title">Danielle Flies</div>
       </a>
-    </li>
-    <!-- Rolling Dani project -->
-    <li class="row" data-row>
-      <a href="projects/rolling-dani/">
-        <!-- Use the DaniBall as the thumbnail.  This image should live in the repo root -->
-        <div class="bg" style="background-image:url('Dani Roll thumb.jpg');"></div>
-        <div class="shade"></div>
-        <span class="label">Rolling Dani</span>
+    </section>
+
+    <!-- Rolling Dani (game) -->
+    <section class="tile" data-href="projects/rolling-dani/">
+      <a href="projects/rolling-dani/" aria-label="Open Rolling Dani">
+        <!-- Use any image you prefer here -->
+        <img class="thumb" src="projects/rolling-dani/thumb.jpg" alt="Rolling Dani thumbnail">
+        <div class="fade"></div>
+        <div class="title">Rolling Dani</div>
       </a>
-    </li>
-    <li class="row" data-row>
-      <a href="projects/project-4/">
-        <div class="bg placeholder-3"></div>
-        <div class="shade"></div>
-        <span class="label">Future Project #4</span>
-      </a>
-    </li>
-    <li class="row" data-row>
-      <a href="projects/project-5/">
-        <div class="bg placeholder-4"></div>
-        <div class="shade"></div>
-        <span class="label">Future Project #5</span>
-      </a>
-    </li>
-    <li class="row" data-row>
-      <a href="projects/project-6/">
-        <div class="bg placeholder-5"></div>
-        <div class="shade"></div>
-        <span class="label">Future Project #6</span>
-      </a>
-    </li>
-  </ul>
-  <script>
-    // Custom click behavior for mobile: first tap expands the row, second tap navigates
-    const rows = Array.from(document.querySelectorAll('[data-row]'));
-    let lastRow = null;
-    rows.forEach(r => {
-      r.addEventListener('click', (e) => {
-        // Determine if we are on a touch device or mobile user agent
-        const isMobile = (e.pointerType === 'touch') || /Mobi|Android/i.test(navigator.userAgent);
-        if (!isMobile) {
-          return; // allow default behaviour on desktop
-        }
-        // If this row isn't expanded yet, expand and prevent navigation
-        if (!r.classList.contains('expanded')) {
+    </section>
+
+    <!-- Add more projects by copying a <section class="tile"> block -->
+  </main>
+
+<script>
+/*
+  Mobile/Touch behavior:
+  - First tap expands the tile smoothly (0.75s)
+  - Second tap (within window) actually navigates
+  - On desktop, :hover handles expand; click navigates directly
+*/
+(function(){
+  const isTouch = matchMedia("(pointer: coarse)").matches || 'ontouchstart' in window;
+  const tiles = Array.from(document.querySelectorAll('.tile'));
+  let lastTapAt = 0;
+  const SECOND_TAP_WINDOW = 1100; // pairs nicely with 750ms animation
+
+  // Collapse other tiles when one opens (nice + tidy)
+  function closeOthers(except){
+    tiles.forEach(t => { if(t !== except) t.classList.remove('is-open'); });
+  }
+
+  tiles.forEach(tile => {
+    const link = tile.querySelector('a');
+    const href = tile.dataset.href || link.getAttribute('href');
+
+    if (isTouch){
+      // First tap expands, second tap within window navigates
+      link.addEventListener('click', (e) => {
+        const now = Date.now();
+        const alreadyOpen = tile.classList.contains('is-open');
+
+        // If not open or last tap too old, treat as "expand"
+        if (!alreadyOpen || (now - lastTapAt) > SECOND_TAP_WINDOW){
           e.preventDefault();
-          if (lastRow && lastRow !== r) {
-            lastRow.classList.remove('expanded');
-          }
-          r.classList.add('expanded');
-          lastRow = r;
-        } else {
-          // Second tap: allow navigation, collapse tracking
-          lastRow = null;
+          closeOthers(tile);
+          tile.classList.add('is-open');
+          lastTapAt = now;
+          // Optional: scroll into view if needed
+          tile.scrollIntoView({behavior:'smooth', block:'nearest'});
+          return;
         }
+
+        // Otherwise, let it navigate normally
       });
-    });
-    // Collapse any expanded row when the user scrolls
-    window.addEventListener('scroll', () => {
-      if (lastRow) {
-        lastRow.classList.remove('expanded');
-        lastRow = null;
-      }
-    }, { passive: true });
-  </script>
+    } else {
+      // Desktop: when hovering one row, collapse the others for a clean stack
+      tile.addEventListener('mouseenter', () => {
+        closeOthers(tile);
+      });
+      // If you also want click-to-pin-open on desktop, uncomment below:
+      // tile.addEventListener('click', (e) => {
+      //   if (!tile.classList.contains('is-open')) {
+      //     e.preventDefault();
+      //     closeOthers(tile);
+      //     tile.classList.add('is-open');
+      //   }
+      // });
+    }
+  });
+
+  // Optional: start with the first tile open for a nice landing
+  // tiles[0]?.classList.add('is-open');
+})();
+</script>
+
 </body>
 </html>
