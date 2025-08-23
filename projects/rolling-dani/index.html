@@ -8,7 +8,7 @@
   body {
     margin: 0;
     overflow: hidden;
-    background-color: #87ceeb;
+    background-color: #87ceeb; /* sky */
   }
   canvas {
     display: block;
@@ -20,13 +20,13 @@
     left: 20px;
     width: 48px;
     height: 48px;
-    background: rgba(0,0,0,0.4);
     border-radius: 24px;
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    font-size: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #fff;
-    font-size: 24px;
     text-decoration: none;
     user-select: none;
   }
@@ -35,119 +35,136 @@
 <body>
 <a id="back" href="../../index.html">←</a>
 <canvas id="game"></canvas>
+
 <script>
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  let width = window.innerWidth;
-  let height = window.innerHeight;
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let width = window.innerWidth;
+let height = window.innerHeight;
+canvas.width = width;
+canvas.height = height;
+
+const groundY = height * 0.8;
+const gravity = 0.6;
+const jumpVelocity = 14;
+const moveSpeed = 6;      // obstacle movement speed
+const horizontalSpeed = 4; // how fast the ball moves to the right
+
+// Ball image
+const ballImg = new Image();
+let ballImgLoaded = false;
+ballImg.src = 'DaniBall.png';
+ballImg.onload = () => { ballImgLoaded = true; };
+
+// Obstacles with encoded names
+const obstacleSources = [
+  'obsticle%201%20coconut.png',
+  'obsticle%202%20pickle.png',
+  'obsticle%203%20tomato.png'
+];
+const obstacleImages = obstacleSources.map(src => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
+
+const ball = {
+  x: width * 0.15,
+  y: groundY - 50,
+  radius: 50,
+  vy: 0,
+  draw() {
+    if (ballImgLoaded) {
+      ctx.drawImage(ballImg,
+        this.x - this.radius,
+        this.y - this.radius,
+        this.radius * 2,
+        this.radius * 2
+      );
+    } else {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff';
+      ctx.fill();
+    }
+  },
+  update() {
+    // vertical motion
+    this.y += this.vy;
+    this.vy += gravity;
+    if (this.y + this.radius > groundY) {
+      this.y = groundY - this.radius;
+      this.vy = 0;
+    }
+    // horizontal motion
+    this.x += horizontalSpeed;
+    if (this.x - this.radius > width) {
+      // wrap to left when completely off the right edge
+      this.x = -this.radius;
+    }
+  }
+};
+
+const obstacles = [];
+function spawnObstacle() {
+  const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
+  obstacles.push({
+    x: width + Math.random() * width,
+    y: groundY - 60,
+    width: 60,
+    height: 60,
+    img
+  });
+}
+
+function update() {
+  // spawn obstacles more often
+  if (Math.random() < 0.05) spawnObstacle();
+
+  obstacles.forEach(ob => ob.x -= moveSpeed);
+  // remove offscreen
+  while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
+    obstacles.shift();
+  }
+
+  ball.update();
+}
+
+function draw() {
+  ctx.clearRect(0, 0, width, height);
+  // ground
+  ctx.fillStyle = '#44aa44';
+  ctx.fillRect(0, groundY, width, height - groundY);
+
+  // draw obstacles
+  obstacles.forEach(ob => {
+    ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
+  });
+
+  // draw ball on top
+  ball.draw();
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && ball.vy === 0 && ball.y + ball.radius >= groundY) {
+    ball.vy = -jumpVelocity;
+  }
+});
+
+window.addEventListener('resize', () => {
+  width = window.innerWidth;
+  height = window.innerHeight;
   canvas.width = width;
   canvas.height = height;
+});
 
-  const groundY = height * 0.8;
-  const gravity = 0.6;
-  const jumpVelocity = 14;
-  const moveSpeed = 6;
-
-  // Ball image
-  const ballImg = new Image();
-  let ballImgLoaded = false;
-  ballImg.src = 'DaniBall.png';
-  ballImg.onload = () => { ballImgLoaded = true; };
-
-  // Obstacles image list, URL-encoded for spaces
-  const obstacleSources = [
-    'obsticle%201%20coconut.png',
-    'obsticle%202%20pickle.png',
-    'obsticle%203%20tomato.png'
-  ];
-  const obstacleImages = obstacleSources.map(src => {
-    const img = new Image();
-    img.src = src;
-    return img;
-  });
-
-  const ball = {
-    x: width * 0.15,
-    y: groundY - 50,
-    radius: 50,
-    vy: 0,
-    draw() {
-      if (ballImgLoaded) {
-        ctx.drawImage(ballImg, this.x - this.radius, this.y - this.radius,
-                      this.radius * 2, this.radius * 2);
-      } else {
-        // Draw placeholder circle until image loads
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-      }
-    },
-    update() {
-      this.y += this.vy;
-      this.vy += gravity;
-      if (this.y + this.radius > groundY) {
-        this.y = groundY - this.radius;
-        this.vy = 0;
-      }
-    }
-  };
-
-  const obstacles = [];
-  function spawnObstacle() {
-    const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
-    obstacles.push({
-      x: width + Math.random() * width,
-      y: groundY - 60,
-      width: 60,
-      height: 60,
-      img
-    });
-  }
-
-  function update() {
-    if (Math.random() < 0.02) spawnObstacle();
-    obstacles.forEach(ob => { ob.x -= moveSpeed; });
-    while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
-      obstacles.shift();
-    }
-    ball.update();
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, width, height);
-    // draw ground
-    ctx.fillStyle = '#44aa44';
-    ctx.fillRect(0, groundY, width, height - groundY);
-    // draw ball
-    ball.draw();
-    // draw obstacles
-    obstacles.forEach(ob => {
-      ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
-    });
-  }
-
-  function gameLoop() {
-    update();
-    draw();
-    requestAnimationFrame(gameLoop);
-  }
-
-  window.addEventListener('keydown', e => {
-    if (e.code === 'Space' && ball.vy === 0 && ball.y + ball.radius >= groundY) {
-      ball.vy = -jumpVelocity;
-    }
-  });
-
-  window.addEventListener('resize', () => {
-    width = window.innerWidth;
-    height = window.innerHeight;
-    canvas.width = width;
-    canvas.height = height;
-  });
-
-  // Start the game immediately
-  gameLoop();
+gameLoop();
 </script>
 </body>
 </html>
