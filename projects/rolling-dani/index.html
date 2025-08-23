@@ -5,16 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Rolling Dani — DanielleTheWalker.com</title>
   <style>
-    html,body{height:100%;margin:0;background:#67b0ff;color:#fff;overflow:hidden;font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
-    canvas{display:block;width:100vw;height:100vh;}
+    html,body{height:100%;margin:0;background:#67b0ff;color:#fff;overflow:hidden;
+      font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
+    canvas{display:block;width:100vw;height:100vh}
 
-    /* tiny HUD text */
     .hud{
       position:fixed;top:10px;left:12px;color:#fff;font-weight:600;font-size:14px;
       text-shadow:0 1px 2px rgba(0,0,0,.5);user-select:none;pointer-events:none;
     }
 
-    /* round frosted back button (same vibe as other pages) */
     .back-btn{
       position:fixed;bottom:18px;left:18px;width:52px;height:52px;border-radius:50%;
       background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);
@@ -22,33 +21,28 @@
       display:grid;place-items:center;cursor:pointer;color:#fff;font-size:22px;
       box-shadow:0 6px 24px rgba(0,0,0,.35);text-decoration:none;
     }
-    .back-btn:hover{transform:translateY(-1px);}
+    .back-btn:hover{transform:translateY(-1px)}
   </style>
 </head>
 <body>
-<canvas id="game"></canvas>
-<div class="hud" id="hud">SPACE to jump • Hold for higher jump</div>
-<a class="back-btn" href="../../" aria-label="Back to gallery"><span>←</span></a>
+  <canvas id="game"></canvas>
+  <div class="hud" id="hud">SPACE to jump • Hold for higher jump</div>
+  <a class="back-btn" href="../../" aria-label="Back to gallery"><span>←</span></a>
 
 <script>
 (() => {
+  // ----- Canvas in CSS px (no DPR) -----
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  const DPR = Math.min(window.devicePixelRatio || 1, 2);
-
   let W = 0, H = 0;
   function resize(){
-    W = Math.floor(innerWidth * DPR);
-    H = Math.floor(innerHeight * DPR);
-    canvas.width = W;
-    canvas.height = H;
-    canvas.style.width = innerWidth + 'px';
-    canvas.style.height = innerHeight + 'px';
+    W = innerWidth; H = innerHeight;
+    canvas.width = W; canvas.height = H;
   }
-  addEventListener('resize', resize, { passive:true });
+  addEventListener('resize', resize, {passive:true});
   resize();
 
-  // ---------- Assets ----------
+  // ----- Assets -----
   const imgBall = new Image();                 imgBall.src = '../../DaniBall.png';
   const obstacleImgs = [
     '../../obsticle%201%20coconut.png',
@@ -56,220 +50,211 @@
     '../../obsticle%203%20tomato.png'
   ].map(src => { const i = new Image(); i.src = src; return i; });
 
-  // ---------- Tunables ----------
+  // ----- Tunables -----
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-  // smaller ball
-  const BALL_RADIUS_DESKTOP = 100;             // ~200px diameter
-  const BALL_RADIUS_MOBILE  = 70;              // ~140px diameter
-  const BALL_RADIUS = (isMobile ? BALL_RADIUS_MOBILE : BALL_RADIUS_DESKTOP) * DPR;
+  const BALL_R = isMobile ? 50 : 60;           // 100px / 120px diameter
+  const G        = 5200;                       // stronger gravity → quicker up/down
+  const MIN_VJ   = 1250;                       // initial jump pop
+  const HOLD_MS  = 180;                        // shorter hold window
+  const EXTRA_MS = 5.2;                        // extra impulse per ms while holding
 
-  // slightly more zoomed out on mobile so you can see what's coming
-  const CAMERA_SCALE = isMobile ? 0.85 : 1.0;
+  const BASE_VX  = 360;                        // starting forward speed
+  const MAX_VX   = 2400;                       // cap so it doesn't go bonkers
+  const AIR_DRAG = 0.996;
 
-  // snappier airtime / jump
-  const g = 3600;                               // gravity (px/s^2)
-  const MAX_HOLD = 200;                         // ms
-  const MIN_JUMP_VEL = 1000;                    // initial impulse
-  const EXTRA_PER_MS = 3.8;                     // extra while holding
+  // Camera keeps the ground nicely visible (ball a bit lower on screen)
+  function camTargetX(){ return ball.x - (W/2 - 320); }
+  function camTargetY(){ return ball.y - (H/2 - 110); } // smaller offset = more ground visible
+  const cam = {x:0, y:0};
 
-  // slope / speed
-  const maxSlope = 0.035;                       // final steepness
-  const slopeRampSecs = 14;                     // reaches full steepness sooner
-  const baseVX = 340;                           // initial speed
-
-  // ground baseline (in device px)
-  let groundY0 = H * 0.55;
-
-  // ---------- World state ----------
-  const ball = { x:0, y:0, vx:baseVX, vy:0, r: BALL_RADIUS, angle:0, grounded:true };
-  const camera = { x:0, y:0 };
-  const obstacles = [];
-
-  // smaller obstacles
-  const OB_MIN_GAP = 520;
-  const OB_MAX_GAP = 980;
-  const OB_BASE_SIZE = 60;                      // used as width baseline (smaller)
-
+  // ----- Ground (varied steepness) -----
+  // We combine a time-varying long downhill slope with wavy x-terms:
+  // - longSlope(t) ramps between gentle and VERY steep (clamped for playability)
+  // - wave terms make it go from nearly flat to steep repeatedly
   let startedAt = performance.now();
+
+  function longSlope(t){
+    // oscillates every ~22s between -0.05 (≈ -3°) and about -0.9 (≈ -42°)
+    // (50° would be tan ≈ 1.19 which is basically freefall; -0.9 is very spicy but playable)
+    const s = Math.sin(t/22*2*Math.PI);
+    return -0.05 + (-0.85 * (0.5*(s+1))); // range: [-0.05 .. -0.90]
+  }
+
+  // baseline ground line (higher number = lower on screen)
+  const GROUND_BASE = () => H * 0.76; // show a decent chunk of green
+
+  function groundY(x){
+    const t = (performance.now() - startedAt)/1000;
+    const m = longSlope(t);
+    // wavy terms: mix flat and steep segments
+    const wave1 = 90 * Math.sin(x / 220);
+    const wave2 = 45 * Math.sin(x / 90  + 1.3);
+    const wave3 = 25 * Math.sin(x / 40  + 0.7); // short ripples for variety
+    return GROUND_BASE() + m * x + wave1 + wave2 + wave3;
+  }
+
+  // numerical slope (rise/run)
+  function slopeAt(x){
+    const e = 1;
+    return (groundY(x+e) - groundY(x-e)) / (2*e);
+  }
+
+  // ----- Player -----
+  const ball = { x:0, y:0, vx:BASE_VX, vy:0, r:BALL_R, angle:0, grounded:true };
   let gameOver = false;
 
-  // ---------- Ground / slope ----------
-  function currentSlope(t){
-    const k = Math.min(t / slopeRampSecs, 1);
-    const eased = k*k*(3 - 2*k);
-    return -(0.004 + (maxSlope - 0.004)*eased);
-  }
-  function groundHeight(x){
-    const t = (performance.now() - startedAt)/1000;
-    const m = currentSlope(t);
-    // simple linear hill (works well visually with camera)
-    return groundY0 + m * x;
-  }
+  // ----- Obstacles -----
+  const obstacles = [];
+  const OB_MIN_GAP = 560, OB_MAX_GAP = 1040;   // a touch more spacing
+  const OB_BASE_W  = 48;                       // smaller
 
-  // ---------- Obstacles ----------
   function spawnObstacles(fromX, toX){
     let x = fromX;
-    while(x < toX){
+    while (x < toX){
       const img = obstacleImgs[(Math.random()*obstacleImgs.length)|0];
-      const w = (OB_BASE_SIZE + Math.random()*40) * DPR;   // smaller width
-      const h = w * (img.naturalHeight && img.naturalWidth ? img.naturalHeight/img.naturalWidth : 1.4);
-      const y = groundHeight(x) - h + 6;                    // slight sink
-      obstacles.push({ x, y, w, h, img });
-      x += OB_MIN_GAP + Math.random()*(OB_MAX_GAP - OB_MIN_GAP);
+      const w = OB_BASE_W + Math.random()*32;
+      const h = img.naturalWidth ? w * (img.naturalHeight/img.naturalWidth) : w*1.3;
+      const y = groundY(x) - h + 6;
+      obstacles.push({x,y,w,h,img});
+      x += OB_MIN_GAP + Math.random()*(OB_MAX_GAP-OB_MIN_GAP);
     }
   }
 
-  // ---------- Reset ----------
+  // ----- Reset -----
   function reset(){
-    ball.x = 0;
-    ball.y = groundHeight(ball.x) - ball.r;
-    ball.vx = baseVX;
-    ball.vy = 0;
-    ball.angle = 0;
-    ball.grounded = true;
-
-    // put the ball lower on screen so ground is visible
-    camera.x = ball.x - (innerWidth*DPR/2 - 280*DPR);
-    camera.y = ball.y - (innerHeight*DPR/2 - 160*DPR);
-
+    ball.x = 0; ball.vx = BASE_VX;
+    ball.y = groundY(ball.x) - ball.r; ball.vy = 0;
+    ball.angle = 0; ball.grounded = true;
+    cam.x = camTargetX(); cam.y = camTargetY();
     obstacles.length = 0;
-    spawnObstacles(ball.x + 700, ball.x + 8000);
+    spawnObstacles(ball.x + 700, ball.x + 9000);
     startedAt = performance.now();
     gameOver = false;
   }
 
-  // ---------- Input (hold jump) ----------
-  let jumpKeyDown = false;
-  let jumpCharge = 0;
-
+  // ----- Input (hold to jump higher) -----
+  let holding = false, holdStart = 0;
   function beginJump(){
-    if(!ball.grounded) return;
-    ball.grounded = false;
-    jumpCharge = 0;
-    ball.vy = -MIN_JUMP_VEL;
+    if (!ball.grounded) return;
+    holding = true; holdStart = performance.now();
+    ball.grounded = false; ball.vy = -MIN_VJ;
+  }
+  function endJump(){
+    if (!holding) return; holding = false;
+    const t = Math.min(HOLD_MS, performance.now() - holdStart);
+    ball.vy -= EXTRA_MS * t;
   }
 
-  addEventListener('keydown', (e) => {
-    if(e.code === 'Space'){
-      if(!jumpKeyDown) beginJump();
-      jumpKeyDown = true;
+  addEventListener('keydown', e=>{
+    if (e.code === 'Space'){
+      if (!holding) beginJump();
       e.preventDefault();
     }
-    if(gameOver && (e.code === 'Space' || e.code === 'Enter')) reset();
-  }, { passive:false });
+    if (gameOver && (e.code === 'Space' || e.code === 'Enter')) reset();
+  }, {passive:false});
+  addEventListener('keyup', e=>{
+    if (e.code === 'Space') endJump();
+  }, {passive:true});
+  addEventListener('pointerdown', ()=>{ if(!holding) beginJump(); }, {passive:true});
+  addEventListener('pointerup',   ()=>{ endJump(); },                {passive:true});
 
-  addEventListener('keyup', (e) => {
-    if(e.code === 'Space') jumpKeyDown = false;
-  }, { passive:true });
-
-  // Touch
-  addEventListener('pointerdown', () => { if(!jumpKeyDown) beginJump(); jumpKeyDown = true; }, { passive:true });
-  addEventListener('pointerup',   () => { jumpKeyDown = false; }, { passive:true });
-
-  // ---------- Helpers ----------
-  function collidesCircleRect(cx, cy, r, rx, ry, rw, rh){
-    const closestX = Math.max(rx, Math.min(cx, rx+rw));
-    const closestY = Math.max(ry, Math.min(cy, ry+rh));
-    const dx = cx - closestX;
-    const dy = cy - closestY;
-    return (dx*dx + dy*dy) < r*r;
+  // ----- Collision -----
+  function hitCircleRect(cx,cy,r, rx,ry,rw,rh){
+    const nx = Math.max(rx, Math.min(cx, rx+rw));
+    const ny = Math.max(ry, Math.min(cy, ry+rh));
+    const dx = cx - nx, dy = cy - ny;
+    return dx*dx + dy*dy < r*r;
   }
 
-  // ---------- Loop ----------
-  let lastTime = performance.now();
+  // ----- Loop -----
+  let last = performance.now();
 
   function step(){
     const now = performance.now();
-    let dt = (now - lastTime) / 1000;
-    lastTime = now;
-    if(dt > 0.033) dt = 0.033;
+    let dt = (now - last)/1000; last = now;
+    if (dt > 0.033) dt = 0.033;
 
-    const tSec = (now - startedAt)/1000;
-    const slope = currentSlope(tSec);
-    const slopeAngle = Math.atan(slope);
+    // slope-based acceleration along the surface
+    const s  = slopeAt(ball.x);
+    const ax = G * (s / Math.sqrt(1 + s*s)) * 0.95; // component of gravity along slope
+    const ay = G;
 
-    // snappier jump while holding
-    if(!ball.grounded && jumpKeyDown && jumpCharge < MAX_HOLD){
-      const add = EXTRA_PER_MS * (dt*1000);
-      ball.vy -= add;
-      jumpCharge += dt*1000;
-    }
-
-    // gravity / motion
-    const ax = g * Math.sin(slopeAngle) * 0.95;
-    const ay = g;
+    // move
     ball.vx += ax * dt;
+    if (ball.vx > MAX_VX) ball.vx = MAX_VX;
+
     ball.x  += ball.vx * dt;
+    if (!ball.grounded) ball.vy *= AIR_DRAG;
     ball.vy += ay * dt;
     ball.y  += ball.vy * dt;
 
-    // ground collision
-    const gy = groundHeight(ball.x);
-    if(ball.y > gy - ball.r){
+    // ground collide
+    const gy = groundY(ball.x);
+    if (ball.y > gy - ball.r){
       ball.y = gy - ball.r;
-      if(ball.vy > 0) ball.vy = 0;
+      if (ball.vy > 0) ball.vy = 0;
       ball.grounded = true;
     } else {
       ball.grounded = false;
     }
 
-    // roll
+    // keep adding boost while holding during the airtime window
+    if (holding && !ball.grounded){
+      const held = Math.min(HOLD_MS, performance.now() - holdStart);
+      ball.vy -= EXTRA_MS * dt * 1000;
+      if (held >= HOLD_MS) holding = false;
+    }
+
+    // roll spin
     ball.angle += (ball.vx / ball.r) * dt;
 
-    // camera – keep ball lower so ground is visible
-    const targetX = ball.x - (innerWidth*DPR/2 - 300*DPR);
-    const targetY = ball.y - (innerHeight*DPR/2 - 170*DPR);
-    camera.x += (targetX - camera.x) * 0.09;
-    camera.y += (targetY - camera.y) * 0.09;
+    // camera follow (show ground)
+    cam.x += (camTargetX() - cam.x) * 0.12;
+    cam.y += (camTargetY() - cam.y) * 0.12;
 
-    // obstacles management
-    const far = ball.x + 6500;
-    if(obstacles.length === 0 || obstacles[obstacles.length-1].x < far){
-      spawnObstacles(far, far+8000);
+    // obstacles upkeep
+    const far = ball.x + 8000;
+    if (!obstacles.length || obstacles[obstacles.length-1].x < far){
+      spawnObstacles(far, far + 9000);
     }
-    for(const o of obstacles){
-      // adjust to ground (in case slope changed)
-      const newY = groundHeight(o.x) - o.h + 6;
-      o.y = newY;
-
-      if(collidesCircleRect(ball.x, ball.y, ball.r*0.82, o.x, o.y, o.w, o.h)){
+    for (const o of obstacles){
+      o.y = groundY(o.x) - o.h + 6; // stick to current ground
+      if (hitCircleRect(ball.x, ball.y, ball.r*0.8, o.x, o.y, o.w, o.h)){
         gameOver = true;
       }
     }
 
-    drawWorld();
+    draw();
     requestAnimationFrame(step);
   }
 
-  function drawWorld(){
+  function draw(){
     ctx.save();
-    ctx.setTransform(CAMERA_SCALE*DPR,0,0,CAMERA_SCALE*DPR,-camera.x*CAMERA_SCALE,-camera.y*CAMERA_SCALE);
+    ctx.translate(-cam.x, -cam.y);
 
     // sky
     ctx.fillStyle = '#67b0ff';
-    ctx.fillRect(camera.x-4000,camera.y-4000, innerWidth*DPR/CAMERA_SCALE+8000, innerHeight*DPR/CAMERA_SCALE+8000);
+    ctx.fillRect(cam.x-4000, cam.y-4000, W+8000, H+8000);
 
-    // ground strip (a long quad along the current slope)
-    const tSec = (performance.now() - startedAt)/1000;
-    const m = currentSlope(tSec);
-    const x0 = camera.x - 2000;
-    const x1 = camera.x + innerWidth*DPR/CAMERA_SCALE + 4000;
-    const y0 = groundY0 + m * x0;
-    const y1 = groundY0 + m * x1;
+    // ground strip (a big quad under the ground line)
+    const x0 = cam.x - 2000;
+    const x1 = cam.x + W + 4000;
+    const y0 = groundY(x0);
+    const y1 = groundY(x1);
 
     ctx.fillStyle = '#2ecc40';
     ctx.beginPath();
     ctx.moveTo(x0, y0);
     ctx.lineTo(x1, y1);
-    ctx.lineTo(x1, y1 + 6000);
-    ctx.lineTo(x0, y0 + 6000);
+    ctx.lineTo(x1, y1 + 4000);
+    ctx.lineTo(x0, y0 + 4000);
     ctx.closePath();
     ctx.fill();
 
     // obstacles
-    for(const o of obstacles){
-      if(o.img.complete && o.img.naturalWidth){
+    for (const o of obstacles){
+      if (o.img.complete && o.img.naturalWidth){
         ctx.drawImage(o.img, o.x, o.y, o.w, o.h);
       } else {
         ctx.fillStyle = 'rgba(0,0,0,.5)';
@@ -281,18 +266,20 @@
     ctx.save();
     ctx.translate(ball.x, ball.y);
     ctx.rotate(ball.angle);
-    if(imgBall.complete && imgBall.naturalWidth){
+    if (imgBall.complete && imgBall.naturalWidth){
       ctx.drawImage(imgBall, -ball.r, -ball.r, ball.r*2, ball.r*2);
     } else {
-      ctx.fillStyle = '#333'; ctx.beginPath(); ctx.arc(0,0,ball.r,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle = '#333';
+      ctx.beginPath(); ctx.arc(0,0,ball.r,0,Math.PI*2); ctx.fill();
     }
     ctx.restore();
 
     ctx.restore();
 
     // HUD
-    const hud = document.getElementById('hud');
-    hud.textContent = gameOver ? 'Oof! Press SPACE (or tap) to restart' : 'SPACE to jump • Hold for higher jump';
+    document.getElementById('hud').textContent =
+      gameOver ? 'Oof! Press SPACE (or tap) to restart' :
+                 'SPACE to jump • Hold for higher jump';
   }
 
   reset();
