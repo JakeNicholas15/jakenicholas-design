@@ -13,6 +13,7 @@
       position:fixed;top:10px;left:12px;color:#fff;font-weight:600;font-size:14px;
       text-shadow:0 1px 2px rgba(0,0,0,.5);user-select:none;pointer-events:none;
     }
+
     .back-btn{
       position:fixed;bottom:18px;left:18px;width:52px;height:52px;border-radius:50%;
       background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);
@@ -30,12 +31,16 @@
 
 <script>
 (() => {
-  // ----- Canvas (CSS px, no DPR scaling) -----
+  // ----- Canvas in CSS px (no DPR) -----
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
   let W = 0, H = 0;
-  function resize(){ W = innerWidth; H = innerHeight; canvas.width = W; canvas.height = H; }
-  addEventListener('resize', resize, {passive:true}); resize();
+  function resize(){
+    W = innerWidth; H = innerHeight;
+    canvas.width = W; canvas.height = H;
+  }
+  addEventListener('resize', resize, {passive:true});
+  resize();
 
   // ----- Assets -----
   const imgBall = new Image();                 imgBall.src = '../../DaniBall.png';
@@ -48,79 +53,67 @@
   // ----- Tunables -----
   const isMobile = /Mobi|Android/i.test(navigator.userAgent);
 
-  const BALL_R   = isMobile ? 50 : 60;         // 100px / 120px diameter
-  const G        = 5200;                       // strong gravity (fast airtime)
-  const MIN_VJ   = 1250;                       // jump pop
-  const HOLD_MS  = 180;                        // hold window
+  const BALL_R = isMobile ? 50 : 60;           // 100px / 120px diameter
+  const G        = 5200;                       // stronger gravity → quicker up/down
+  const MIN_VJ   = 1250;                       // initial jump pop
+  const HOLD_MS  = 180;                        // shorter hold window
   const EXTRA_MS = 5.2;                        // extra impulse per ms while holding
 
-  const BASE_VX  = 420;                        // faster start
-  const MAX_VX   = 2600;                       // cap
+  const BASE_VX  = 360;                        // starting forward speed
+  const MAX_VX   = 2400;                       // cap so it doesn't go bonkers
   const AIR_DRAG = 0.996;
 
-  // Camera: keep a good band of ground visible
+  // Camera keeps the ground nicely visible (ball a bit lower on screen)
   function camTargetX(){ return ball.x - (W/2 - 320); }
-  function camTargetY(){ return ball.y - (H/2 - 140); }
+  function camTargetY(){ return ball.y - (H/2 - 110); } // smaller offset = more ground visible
   const cam = {x:0, y:0};
 
-  // ---------- Monotonic downhill ground ----------
-  // Slope s(x) <= 0 always. We use two sine components (0..1), scaled and negated.
-  // s(x) = -( a + b1 * (1+sin(k1 x))/2 + b2 * (1+sin(k2 x))/2 )
-  // groundY(x) is the integral of s(x):
-  // y = C - (a + 0.5*b1 + 0.5*b2) * x + (b1/(2*k1)) * cos(k1 x) + (b2/(2*k2)) * cos(k2 x)
-
+  // ----- Ground (varied steepness) -----
+  // We combine a time-varying long downhill slope with wavy x-terms:
+  // - longSlope(t) ramps between gentle and VERY steep (clamped for playability)
+  // - wave terms make it go from nearly flat to steep repeatedly
   let startedAt = performance.now();
-  const rampSecs = 18;                         // time to reach full chaos
-  function ease(k){ return k*k*(3-2*k); }      // smoothstep
 
-  function params(){
-    const t = (performance.now() - startedAt)/1000;
-    const r = ease(Math.min(t/rampSecs, 1));   // 0 → 1 over time
-
-    // Baseline and wave amplitudes (in tan(angle) space).
-    // At full ramp: a + b1 + b2 ≈ 1.0 (≈ 45°). Starts near flat.
-    const a  = 0.01 + 0.24 * r;                // baseline downhill
-    const b1 = 0.00 + 0.48 * r;                // big undulation
-    const b2 = 0.00 + 0.27 * r;                // smaller undulation
-
-    // Wavelengths (px): 900px and 450px
-    const k1 = 2*Math.PI/900;
-    const k2 = 2*Math.PI/450;
-
-    return {a,b1,b2,k1,k2};
+  function longSlope(t){
+    // oscillates every ~22s between -0.05 (≈ -3°) and about -0.9 (≈ -42°)
+    // (50° would be tan ≈ 1.19 which is basically freefall; -0.9 is very spicy but playable)
+    const s = Math.sin(t/22*2*Math.PI);
+    return -0.05 + (-0.85 * (0.5*(s+1))); // range: [-0.05 .. -0.90]
   }
 
-  const GROUND_BASE = () => H * 0.78;          // draw ground lower = more visible
+  // baseline ground line (higher number = lower on screen)
+  const GROUND_BASE = () => H * 0.76; // show a decent chunk of green
 
   function groundY(x){
-    const {a,b1,b2,k1,k2} = params();
-    const C = GROUND_BASE();
-    return C
-      - (a + 0.5*b1 + 0.5*b2) * x
-      + (b1/(2*k1)) * Math.cos(k1*x)
-      + (b2/(2*k2)) * Math.cos(k2*x);
+    const t = (performance.now() - startedAt)/1000;
+    const m = longSlope(t);
+    // wavy terms: mix flat and steep segments
+    const wave1 = 90 * Math.sin(x / 220);
+    const wave2 = 45 * Math.sin(x / 90  + 1.3);
+    const wave3 = 25 * Math.sin(x / 40  + 0.7); // short ripples for variety
+    return GROUND_BASE() + m * x + wave1 + wave2 + wave3;
   }
 
+  // numerical slope (rise/run)
   function slopeAt(x){
-    const {a,b1,b2,k1,k2} = params();
-    // analytic derivative (always <= 0)
-    return -( a + b1*(1+Math.sin(k1*x))/2 + b2*(1+Math.sin(k2*x))/2 );
+    const e = 1;
+    return (groundY(x+e) - groundY(x-e)) / (2*e);
   }
 
-  // ---------- Player ----------
+  // ----- Player -----
   const ball = { x:0, y:0, vx:BASE_VX, vy:0, r:BALL_R, angle:0, grounded:true };
   let gameOver = false;
 
-  // ---------- Obstacles ----------
+  // ----- Obstacles -----
   const obstacles = [];
-  const OB_MIN_GAP = 580, OB_MAX_GAP = 1100;   // a bit more spacing
+  const OB_MIN_GAP = 560, OB_MAX_GAP = 1040;   // a touch more spacing
   const OB_BASE_W  = 48;                       // smaller
 
   function spawnObstacles(fromX, toX){
     let x = fromX;
     while (x < toX){
       const img = obstacleImgs[(Math.random()*obstacleImgs.length)|0];
-      const w = OB_BASE_W + Math.random()*34;
+      const w = OB_BASE_W + Math.random()*32;
       const h = img.naturalWidth ? w * (img.naturalHeight/img.naturalWidth) : w*1.3;
       const y = groundY(x) - h + 6;
       obstacles.push({x,y,w,h,img});
@@ -128,22 +121,19 @@
     }
   }
 
-  // ---------- Reset ----------
+  // ----- Reset -----
   function reset(){
-    // Start on nearly flat (ramp is ~0), x=0
     ball.x = 0; ball.vx = BASE_VX;
     ball.y = groundY(ball.x) - ball.r; ball.vy = 0;
     ball.angle = 0; ball.grounded = true;
-
     cam.x = camTargetX(); cam.y = camTargetY();
-
     obstacles.length = 0;
-    spawnObstacles(ball.x + 900, ball.x + 10000); // nothing right at spawn
+    spawnObstacles(ball.x + 700, ball.x + 9000);
     startedAt = performance.now();
     gameOver = false;
   }
 
-  // ---------- Input (hold to jump higher) ----------
+  // ----- Input (hold to jump higher) -----
   let holding = false, holdStart = 0;
   function beginJump(){
     if (!ball.grounded) return;
@@ -169,7 +159,7 @@
   addEventListener('pointerdown', ()=>{ if(!holding) beginJump(); }, {passive:true});
   addEventListener('pointerup',   ()=>{ endJump(); },                {passive:true});
 
-  // ---------- Collision ----------
+  // ----- Collision -----
   function hitCircleRect(cx,cy,r, rx,ry,rw,rh){
     const nx = Math.max(rx, Math.min(cx, rx+rw));
     const ny = Math.max(ry, Math.min(cy, ry+rh));
@@ -177,7 +167,7 @@
     return dx*dx + dy*dy < r*r;
   }
 
-  // ---------- Loop ----------
+  // ----- Loop -----
   let last = performance.now();
 
   function step(){
@@ -185,15 +175,16 @@
     let dt = (now - last)/1000; last = now;
     if (dt > 0.033) dt = 0.033;
 
-    // slope-based acceleration along the surface (component of gravity)
+    // slope-based acceleration along the surface
     const s  = slopeAt(ball.x);
-    const ax = G * (s / Math.sqrt(1 + s*s)) * 0.95; // s<=0 → accelerates to right
+    const ax = G * (s / Math.sqrt(1 + s*s)) * 0.95; // component of gravity along slope
     const ay = G;
 
+    // move
     ball.vx += ax * dt;
     if (ball.vx > MAX_VX) ball.vx = MAX_VX;
-    ball.x  += ball.vx * dt;
 
+    ball.x  += ball.vx * dt;
     if (!ball.grounded) ball.vy *= AIR_DRAG;
     ball.vy += ay * dt;
     ball.y  += ball.vy * dt;
@@ -208,7 +199,7 @@
       ball.grounded = false;
     }
 
-    // hold boost while airborne
+    // keep adding boost while holding during the airtime window
     if (holding && !ball.grounded){
       const held = Math.min(HOLD_MS, performance.now() - holdStart);
       ball.vy -= EXTRA_MS * dt * 1000;
@@ -218,17 +209,17 @@
     // roll spin
     ball.angle += (ball.vx / ball.r) * dt;
 
-    // camera follow
+    // camera follow (show ground)
     cam.x += (camTargetX() - cam.x) * 0.12;
     cam.y += (camTargetY() - cam.y) * 0.12;
 
     // obstacles upkeep
-    const far = ball.x + 9000;
+    const far = ball.x + 8000;
     if (!obstacles.length || obstacles[obstacles.length-1].x < far){
-      spawnObstacles(far, far + 10000);
+      spawnObstacles(far, far + 9000);
     }
     for (const o of obstacles){
-      o.y = groundY(o.x) - o.h + 6; // glue to current ground
+      o.y = groundY(o.x) - o.h + 6; // stick to current ground
       if (hitCircleRect(ball.x, ball.y, ball.r*0.8, o.x, o.y, o.w, o.h)){
         gameOver = true;
       }
@@ -246,9 +237,11 @@
     ctx.fillStyle = '#67b0ff';
     ctx.fillRect(cam.x-4000, cam.y-4000, W+8000, H+8000);
 
-    // ground strip (big quad under ground line)
-    const x0 = cam.x - 2000, x1 = cam.x + W + 4000;
-    const y0 = groundY(x0),   y1 = groundY(x1);
+    // ground strip (a big quad under the ground line)
+    const x0 = cam.x - 2000;
+    const x1 = cam.x + W + 4000;
+    const y0 = groundY(x0);
+    const y1 = groundY(x1);
 
     ctx.fillStyle = '#2ecc40';
     ctx.beginPath();
