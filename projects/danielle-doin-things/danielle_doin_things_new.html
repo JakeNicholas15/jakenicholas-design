@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Danielle Doin Things</title>
+  <!-- Optional fun font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chewy&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    /* Checkerboard background using the root image offset */
+    body {
+      background-image: url("../../DanielleTheWalker_BG.jpg"), url("../../DanielleTheWalker_BG.jpg");
+      background-repeat: repeat;
+      background-size: 50px 50px;
+      background-position: 0 0, 25px 25px;
+      position: relative;
+      font-family: "Chewy", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    }
+
+    /* Central featured image */
+    .featured {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 500px;
+      height: 800px;
+      transform: translate(-50%, -50%);
+      border-radius: 12px;
+      overflow: hidden;
+      z-index: 3;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    .featured img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      animation: hue 6s linear infinite, flicker 1.1s steps(2,end) infinite;
+      filter: saturate(1.4) contrast(1.05);
+      transform: scale(var(--zoom, 1));
+      will-change: transform;
+    }
+    /* Glow layers for the featured image */
+    .featured::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      pointer-events: none;
+      animation: glowRGB 3.5s linear infinite;
+    }
+    .featured::before {
+      content: "";
+      position: absolute;
+      inset: -28px;
+      border-radius: inherit;
+      background: conic-gradient(
+        from 0deg,
+        #ff0040, #ff00ff, #6a5bff, #00e6ff, #00ff88, #ffff00, #ff7a00, #ff0040
+      );
+      filter: blur(18px) saturate(2.2);
+      mix-blend-mode: screen;
+      opacity: 0.9;
+      pointer-events: none;
+      transform-origin: 50% 50%;
+      animation: ringSpin 4s linear infinite, pulseRing 2s ease-in-out infinite;
+    }
+
+    /* Base for floating memes */
+    .meme {
+      position: absolute;
+      z-index: 5;
+      will-change: transform, left, top, bottom;
+    }
+    .meme img {
+      width: 100%;
+      height: auto;
+      display: block;
+      pointer-events: none;
+    }
+    /* Horizontal floaters */
+    .meme1 {
+      bottom: 15%;
+      left: -30%;
+      width: 15vw;
+      animation: slideRightSpin 25s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(255, 64, 64, 1)) drop-shadow(0 0 60px rgba(255, 64, 64, 0.9));
+    }
+    .meme2 {
+      top: 10%;
+      left: 100%;
+      width: 10vw;
+      animation: slideLeftSpin 30s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(64, 255, 120, 1)) drop-shadow(0 0 60px rgba(64, 255, 120, 0.9));
+    }
+    /* Vertical floaters */
+    .meme3 {
+      top: -30%;
+      left: 10%;
+      width: 12vw;
+      animation: floatDownSpin 28s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(80, 150, 255, 1)) drop-shadow(0 0 60px rgba(80, 150, 255, 0.9));
+    }
+    .meme4 {
+      bottom: -30%;
+      right: 12%;
+      width: 12vw;
+      animation: floatUpSpin 32s linear infinite;
+      filter: drop-shadow(0 0 24px rgba(255, 90, 230, 1)) drop-shadow(0 0 60px rgba(255, 90, 230, 0.9));
+    }
+
+    /* Animations */
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50%      { transform: translate(-50%, -50%) scale(1.12); }
+    }
+    @keyframes flicker {
+      0% { opacity: 1; } 8% { opacity: 0.85; } 9% { opacity: 1; }
+      30% { opacity: 0.9; } 31% { opacity: 1; }
+      70% { opacity: 0.88; } 71% { opacity: 1; }
+      100% { opacity: 1; }
+    }
+    @keyframes hue {
+      from { filter: hue-rotate(0deg) saturate(1.6) contrast(1.08); }
+      to   { filter: hue-rotate(360deg) saturate(1.6) contrast(1.08); }
+    }
+    @keyframes glowRGB {
+      0%   { box-shadow: 0 0 40px 14px rgba(255,0,64,0.95), 0 0 80px 30px rgba(255,0,64,0.8); }
+      25%  { box-shadow: 0 0 50px 18px rgba(0,255,128,0.95), 0 0 90px 34px rgba(0,255,128,0.8); }
+      50%  { box-shadow: 0 0 60px 22px rgba(0,128,255,0.95), 0 0 110px 42px rgba(0,128,255,0.8); }
+      75%  { box-shadow: 0 0 55px 20px rgba(255,220,0,0.95), 0 0 100px 40px rgba(255,220,0,0.8); }
+      100% { box-shadow: 0 0 40px 14px rgba(255,0,64,0.95), 0 0 80px 30px rgba(255,0,64,0.8); }
+    }
+    @keyframes ringSpin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+    @keyframes pulseRing {
+      0%,100% { opacity: 0.85; transform: scale(1); }
+      50%     { opacity: 1;    transform: scale(1.08); }
+    }
+    @keyframes slideRightSpin {
+      0%   { left: -30%; transform: rotate(0deg); }
+      50%  { left: 100%; transform: rotate(360deg); }
+      100% { left: -30%; transform: rotate(720deg); }
+    }
+    @keyframes slideLeftSpin {
+      0%   { left: 100%; transform: rotate(0deg); }
+      50%  { left: -30%; transform: rotate(360deg); }
+      100% { left: 100%; transform: rotate(720deg); }
+    }
+    @keyframes floatDownSpin {
+      0%   { top: -30%;  transform: rotate(0deg); }
+      50%  { top: 100%;  transform: rotate(360deg); }
+      100% { top: -30%;  transform: rotate(720deg); }
+    }
+    @keyframes floatUpSpin {
+      0%   { bottom: -30%; transform: rotate(0deg); }
+      50%  { bottom: 100%; transform: rotate(360deg); }
+      100% { bottom: -30%; transform: rotate(720deg); }
+    }
+
+    /* Audio button style */
+    #shepToggle {
+      position: fixed;
+      top: 80px;
+      left: 16px;
+      z-index: 9998;
+      font: 700 32px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      padding: 18px 28px;
+      border-radius: 999px;
+      border: 0;
+      color: #fff;
+      background: rgba(255,255,255,0.12);
+      backdrop-filter: blur(12px) saturate(1.2);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2);
+      box-shadow: 0 6px 22px rgba(0,0,0,0.45), 0 0 22px rgba(0,255,200,0.4);
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s;
+    }
+    #shepToggle:hover {
+      transform: scale(1.08);
+      background: rgba(255,255,255,0.22);
+      box-shadow: 0 8px 26px rgba(0,0,0,0.55), 0 0 30px rgba(0,255,200,0.6);
+    }
+    #shepToggle[aria-pressed="true"] {
+      background: rgba(0,255,200,0.22);
+      box-shadow: 0 6px 24px rgba(0,0,0,0.35), 0 0 22px rgba(0,255,200,0.45);
+    }
+
+    /* Back button */
+    #backBtn {
+      position: fixed;
+      left: 16px;
+      bottom: 16px;
+      width: 56px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.15);
+      backdrop-filter: blur(12px) saturate(1.2);
+      -webkit-backdrop-filter: blur(12px) saturate(1.2);
+      color: #fff;
+      z-index: 9999;
+      text-decoration: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+    #backBtn:hover {
+      transform: scale(1.08);
+      background: rgba(255,255,255,0.25);
+    }
+
+    /* Responsiveness */
+    @media (max-width: 640px) {
+      .featured { width: 70vw; height: 110vw; }
+      .meme1 { width: 28vw; }
+      .meme2, .meme3, .meme4 { width: 22vw; }
+      #shepToggle { font-size: 24px; top: 70px; padding: 12px 20px; }
+      #backBtn { font-size: 24px; width: 48px; height: 48px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Audio toggle button -->
+  <button id="shepToggle" aria-pressed="false" title="Play/Pause">🔊👂💃</button>
+  <!-- Back button -->
+  <a id="backBtn" href="../../">←</a>
+
+  <!-- Central featured image -->
+  <div class="featured">
+    <img src="../../Feature.jpeg" alt="">
+  </div>
+
+  <!-- Floating memes -->
+  <div class="meme meme1"><img src="../../IMG_5780.JPG" alt=""></div>
+  <div class="meme meme2"><img src="../../JAKE1227.jpg" alt=""></div>
+  <div class="meme meme3"><img src="../../6ka.gif" alt=""></div>
+  <div class="meme meme4"><img src="../../Gt1B-60W4AI6H1j.png" alt=""></div>
+
+  <!-- Audio element -->
+  <audio id="shepAudio" loop>
+    <source src="../../Tate McRae - It's ok I'm ok.mp3" type="audio/mpeg">
+  </audio>
+
+  <!-- Scripts -->
+  <script>
+    // Audio play/pause logic
+    const audioBtn = document.getElementById('shepToggle');
+    const audioEl  = document.getElementById('shepAudio');
+    audioBtn.addEventListener('click', () => {
+      if (audioEl.paused) {
+        audioEl.play();
+        audioBtn.setAttribute('aria-pressed', 'true');
+      } else {
+        audioEl.pause();
+        audioBtn.setAttribute('aria-pressed', 'false');
+      }
+    });
+
+    // Scroll to zoom
+    const featImg = document.querySelector('.featured img');
+    let zoom = 1;
+    window.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      zoom += (e.deltaY > 0 ? -0.05 : 0.05);
+      zoom = Math.max(0.6, Math.min(1.5, zoom));
+      featImg.style.setProperty('--zoom', zoom);
+    }, { passive: false });
+  </script>
+
+</body>
+</html>
