@@ -1,290 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Rolling Dani — DanielleTheWalker.com</title>
-  <style>
-    html,body{height:100%;margin:0;background:#67b0ff;color:#fff;overflow:hidden;
-      font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;}
-    canvas{display:block;width:100vw;height:100vh}
-
-    .hud{
-      position:fixed;top:10px;left:12px;color:#fff;font-weight:600;font-size:14px;
-      text-shadow:0 1px 2px rgba(0,0,0,.5);user-select:none;pointer-events:none;
-    }
-
-    .back-btn{
-      position:fixed;bottom:18px;left:18px;width:52px;height:52px;border-radius:50%;
-      background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.3);
-      backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-      display:grid;place-items:center;cursor:pointer;color:#fff;font-size:22px;
-      box-shadow:0 6px 24px rgba(0,0,0,.35);text-decoration:none;
-    }
-    .back-btn:hover{transform:translateY(-1px)}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rolling Dani</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #87ceeb; /* blue sky */
+    font-family: sans-serif;
+  }
+  canvas {
+    display: block;
+    background-color: #87ceeb; /* same sky color */
+  }
+  /* Back button styled like the round audio button */
+  #back {
+    position: absolute;
+    bottom: 20px;
+    left: 20px;
+    width: 48px;
+    height: 48px;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    user-select: none;
+  }
+</style>
 </head>
 <body>
-  <canvas id="game"></canvas>
-  <div class="hud" id="hud">SPACE to jump • Hold for higher jump</div>
-  <a class="back-btn" href="../../" aria-label="Back to gallery"><span>←</span></a>
+<a id="back" href="../../index.html">←</a>
+<canvas id="game"></canvas>
 
 <script>
-(() => {
-  // ----- Canvas in CSS px (no DPR) -----
-  const canvas = document.getElementById('game');
-  const ctx = canvas.getContext('2d');
-  let W = 0, H = 0;
-  function resize(){
-    W = innerWidth; H = innerHeight;
-    canvas.width = W; canvas.height = H;
-  }
-  addEventListener('resize', resize, {passive:true});
-  resize();
+/* Basic setup */
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let width = window.innerWidth;
+let height = window.innerHeight;
+canvas.width = width;
+canvas.height = height;
 
-  // ----- Assets -----
-  const imgBall = new Image();                 imgBall.src = '../../DaniBall.png';
-  const obstacleImgs = [
-    '../../obsticle%201%20coconut.png',
-    '../../obsticle%202%20pickle.png',
-    '../../obsticle%203%20tomato.png'
-  ].map(src => { const i = new Image(); i.src = src; return i; });
+const groundY = height * 0.8;       // ground position
+const gravity = 0.6;                // gravity strength
+const jumpVelocity = 14;            // jump power
+const moveSpeed = 6;                // obstacle movement speed
 
-  // ----- Tunables -----
-  const isMobile = /Mobi|Android/i.test(navigator.userAgent);
+// Load images
+const ballImg = new Image();
+ballImg.src = 'DaniBall.png';
 
-  const BALL_R = isMobile ? 50 : 60;           // 100px / 120px diameter
-  const G        = 5200;                       // stronger gravity → quicker up/down
-  const MIN_VJ   = 1250;                       // initial jump pop
-  const HOLD_MS  = 180;                        // shorter hold window
-  const EXTRA_MS = 5.2;                        // extra impulse per ms while holding
+const obstacleImages = [
+  'obsticle 1 coconut.png',
+  'obsticle 2 pickle.png',
+  'obsticle 3 tomato.png'
+].map(src => {
+  const img = new Image();
+  img.src = src;
+  return img;
+});
 
-  const BASE_VX  = 360;                        // starting forward speed
-  const MAX_VX   = 2400;                       // cap so it doesn't go bonkers
-  const AIR_DRAG = 0.996;
-
-  // Camera keeps the ground nicely visible (ball a bit lower on screen)
-  function camTargetX(){ return ball.x - (W/2 - 320); }
-  function camTargetY(){ return ball.y - (H/2 - 110); } // smaller offset = more ground visible
-  const cam = {x:0, y:0};
-
-  // ----- Ground (varied steepness) -----
-  // We combine a time-varying long downhill slope with wavy x-terms:
-  // - longSlope(t) ramps between gentle and VERY steep (clamped for playability)
-  // - wave terms make it go from nearly flat to steep repeatedly
-  let startedAt = performance.now();
-
-  function longSlope(t){
-    // oscillates every ~22s between -0.05 (≈ -3°) and about -0.9 (≈ -42°)
-    // (50° would be tan ≈ 1.19 which is basically freefall; -0.9 is very spicy but playable)
-    const s = Math.sin(t/22*2*Math.PI);
-    return -0.05 + (-0.85 * (0.5*(s+1))); // range: [-0.05 .. -0.90]
-  }
-
-  // baseline ground line (higher number = lower on screen)
-  const GROUND_BASE = () => H * 0.76; // show a decent chunk of green
-
-  function groundY(x){
-    const t = (performance.now() - startedAt)/1000;
-    const m = longSlope(t);
-    // wavy terms: mix flat and steep segments
-    const wave1 = 90 * Math.sin(x / 220);
-    const wave2 = 45 * Math.sin(x / 90  + 1.3);
-    const wave3 = 25 * Math.sin(x / 40  + 0.7); // short ripples for variety
-    return GROUND_BASE() + m * x + wave1 + wave2 + wave3;
-  }
-
-  // numerical slope (rise/run)
-  function slopeAt(x){
-    const e = 1;
-    return (groundY(x+e) - groundY(x-e)) / (2*e);
-  }
-
-  // ----- Player -----
-  const ball = { x:0, y:0, vx:BASE_VX, vy:0, r:BALL_R, angle:0, grounded:true };
-  let gameOver = false;
-
-  // ----- Obstacles -----
-  const obstacles = [];
-  const OB_MIN_GAP = 560, OB_MAX_GAP = 1040;   // a touch more spacing
-  const OB_BASE_W  = 48;                       // smaller
-
-  function spawnObstacles(fromX, toX){
-    let x = fromX;
-    while (x < toX){
-      const img = obstacleImgs[(Math.random()*obstacleImgs.length)|0];
-      const w = OB_BASE_W + Math.random()*32;
-      const h = img.naturalWidth ? w * (img.naturalHeight/img.naturalWidth) : w*1.3;
-      const y = groundY(x) - h + 6;
-      obstacles.push({x,y,w,h,img});
-      x += OB_MIN_GAP + Math.random()*(OB_MAX_GAP-OB_MIN_GAP);
+// Ball object
+const ball = {
+  x: width * 0.15,
+  y: groundY - 50,
+  radius: 50,
+  vy: 0,
+  draw() {
+    ctx.drawImage(ballImg, this.x - this.radius, this.y - this.radius,
+                  this.radius * 2, this.radius * 2);
+  },
+  update() {
+    this.y += this.vy;
+    this.vy += gravity;
+    // keep ball on ground
+    if (this.y + this.radius > groundY) {
+      this.y = groundY - this.radius;
+      this.vy = 0;
     }
   }
+};
 
-  // ----- Reset -----
-  function reset(){
-    ball.x = 0; ball.vx = BASE_VX;
-    ball.y = groundY(ball.x) - ball.r; ball.vy = 0;
-    ball.angle = 0; ball.grounded = true;
-    cam.x = camTargetX(); cam.y = camTargetY();
-    obstacles.length = 0;
-    spawnObstacles(ball.x + 700, ball.x + 9000);
-    startedAt = performance.now();
-    gameOver = false;
+// Obstacles array
+const obstacles = [];
+function spawnObstacle() {
+  const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
+  obstacles.push({
+    x: width + Math.random() * width,
+    y: groundY - 60,
+    width: 60,
+    height: 60,
+    img
+  });
+}
+
+// Game loop
+function update() {
+  // Randomly spawn obstacles
+  if (Math.random() < 0.02) spawnObstacle();
+
+  // Move obstacles left
+  obstacles.forEach(ob => ob.x -= moveSpeed);
+  // Remove offscreen obstacles
+  while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
+    obstacles.shift();
   }
 
-  // ----- Input (hold to jump higher) -----
-  let holding = false, holdStart = 0;
-  function beginJump(){
-    if (!ball.grounded) return;
-    holding = true; holdStart = performance.now();
-    ball.grounded = false; ball.vy = -MIN_VJ;
+  ball.update();
+}
+
+function draw() {
+  // Clear screen
+  ctx.clearRect(0, 0, width, height);
+
+  // Draw ground
+  ctx.fillStyle = '#44aa44';
+  ctx.fillRect(0, groundY, width, height - groundY);
+
+  // Draw ball
+  ball.draw();
+
+  // Draw obstacles
+  obstacles.forEach(ob => {
+    ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
+  });
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// Handle jumping
+window.addEventListener('keydown', e => {
+  if (e.code === 'Space' && ball.vy === 0 && ball.y + ball.radius >= groundY) {
+    ball.vy = -jumpVelocity;
   }
-  function endJump(){
-    if (!holding) return; holding = false;
-    const t = Math.min(HOLD_MS, performance.now() - holdStart);
-    ball.vy -= EXTRA_MS * t;
-  }
+});
 
-  addEventListener('keydown', e=>{
-    if (e.code === 'Space'){
-      if (!holding) beginJump();
-      e.preventDefault();
-    }
-    if (gameOver && (e.code === 'Space' || e.code === 'Enter')) reset();
-  }, {passive:false});
-  addEventListener('keyup', e=>{
-    if (e.code === 'Space') endJump();
-  }, {passive:true});
-  addEventListener('pointerdown', ()=>{ if(!holding) beginJump(); }, {passive:true});
-  addEventListener('pointerup',   ()=>{ endJump(); },                {passive:true});
+// Resize handler
+window.addEventListener('resize', () => {
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = width;
+  canvas.height = height;
+});
 
-  // ----- Collision -----
-  function hitCircleRect(cx,cy,r, rx,ry,rw,rh){
-    const nx = Math.max(rx, Math.min(cx, rx+rw));
-    const ny = Math.max(ry, Math.min(cy, ry+rh));
-    const dx = cx - nx, dy = cy - ny;
-    return dx*dx + dy*dy < r*r;
-  }
-
-  // ----- Loop -----
-  let last = performance.now();
-
-  function step(){
-    const now = performance.now();
-    let dt = (now - last)/1000; last = now;
-    if (dt > 0.033) dt = 0.033;
-
-    // slope-based acceleration along the surface
-    const s  = slopeAt(ball.x);
-    const ax = G * (s / Math.sqrt(1 + s*s)) * 0.95; // component of gravity along slope
-    const ay = G;
-
-    // move
-    ball.vx += ax * dt;
-    if (ball.vx > MAX_VX) ball.vx = MAX_VX;
-
-    ball.x  += ball.vx * dt;
-    if (!ball.grounded) ball.vy *= AIR_DRAG;
-    ball.vy += ay * dt;
-    ball.y  += ball.vy * dt;
-
-    // ground collide
-    const gy = groundY(ball.x);
-    if (ball.y > gy - ball.r){
-      ball.y = gy - ball.r;
-      if (ball.vy > 0) ball.vy = 0;
-      ball.grounded = true;
-    } else {
-      ball.grounded = false;
-    }
-
-    // keep adding boost while holding during the airtime window
-    if (holding && !ball.grounded){
-      const held = Math.min(HOLD_MS, performance.now() - holdStart);
-      ball.vy -= EXTRA_MS * dt * 1000;
-      if (held >= HOLD_MS) holding = false;
-    }
-
-    // roll spin
-    ball.angle += (ball.vx / ball.r) * dt;
-
-    // camera follow (show ground)
-    cam.x += (camTargetX() - cam.x) * 0.12;
-    cam.y += (camTargetY() - cam.y) * 0.12;
-
-    // obstacles upkeep
-    const far = ball.x + 8000;
-    if (!obstacles.length || obstacles[obstacles.length-1].x < far){
-      spawnObstacles(far, far + 9000);
-    }
-    for (const o of obstacles){
-      o.y = groundY(o.x) - o.h + 6; // stick to current ground
-      if (hitCircleRect(ball.x, ball.y, ball.r*0.8, o.x, o.y, o.w, o.h)){
-        gameOver = true;
-      }
-    }
-
-    draw();
-    requestAnimationFrame(step);
-  }
-
-  function draw(){
-    ctx.save();
-    ctx.translate(-cam.x, -cam.y);
-
-    // sky
-    ctx.fillStyle = '#67b0ff';
-    ctx.fillRect(cam.x-4000, cam.y-4000, W+8000, H+8000);
-
-    // ground strip (a big quad under the ground line)
-    const x0 = cam.x - 2000;
-    const x1 = cam.x + W + 4000;
-    const y0 = groundY(x0);
-    const y1 = groundY(x1);
-
-    ctx.fillStyle = '#2ecc40';
-    ctx.beginPath();
-    ctx.moveTo(x0, y0);
-    ctx.lineTo(x1, y1);
-    ctx.lineTo(x1, y1 + 4000);
-    ctx.lineTo(x0, y0 + 4000);
-    ctx.closePath();
-    ctx.fill();
-
-    // obstacles
-    for (const o of obstacles){
-      if (o.img.complete && o.img.naturalWidth){
-        ctx.drawImage(o.img, o.x, o.y, o.w, o.h);
-      } else {
-        ctx.fillStyle = 'rgba(0,0,0,.5)';
-        ctx.fillRect(o.x, o.y, o.w, o.h);
-      }
-    }
-
-    // ball
-    ctx.save();
-    ctx.translate(ball.x, ball.y);
-    ctx.rotate(ball.angle);
-    if (imgBall.complete && imgBall.naturalWidth){
-      ctx.drawImage(imgBall, -ball.r, -ball.r, ball.r*2, ball.r*2);
-    } else {
-      ctx.fillStyle = '#333';
-      ctx.beginPath(); ctx.arc(0,0,ball.r,0,Math.PI*2); ctx.fill();
-    }
-    ctx.restore();
-
-    ctx.restore();
-
-    // HUD
-    document.getElementById('hud').textContent =
-      gameOver ? 'Oof! Press SPACE (or tap) to restart' :
-                 'SPACE to jump • Hold for higher jump';
-  }
-
-  reset();
-  requestAnimationFrame(step);
-})();
+ballImg.onload = () => {
+  // Start the game once images are ready
+  Promise.all(obstacleImages.map(img => new Promise(res => {
+    if (img.complete) res();
+    else img.onload = res;
+  }))).then(() => {
+    gameLoop();
+  });
+};
 </script>
 </body>
 </html>
