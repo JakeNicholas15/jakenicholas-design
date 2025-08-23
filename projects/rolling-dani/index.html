@@ -10,11 +10,10 @@
   #back {
     position: absolute; bottom: 20px; left: 20px;
     width: 48px; height: 48px;
-    border-radius: 24px;
-    background: rgba(0,0,0,0.4);
+    border-radius: 24px; background: rgba(0,0,0,0.4);
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: 24px;
-    text-decoration: none; user-select: none;
+    color: #fff; font-size: 24px; text-decoration: none;
+    user-select: none;
   }
 </style>
 </head>
@@ -24,21 +23,26 @@
 <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-  let width = window.innerWidth, height = window.innerHeight;
-  canvas.width = width; canvas.height = height;
-  const groundY = height * 0.8;
-  const gravity = 0.6;
-  const jumpVelocity = 14;
-  const horizontalSpeed = 4;
-  const obstacleSpeed = 6;
 
-  // Load the ball image from two directories up
+  let width = window.innerWidth;
+  let height = window.innerHeight;
+  canvas.width = width;
+  canvas.height = height;
+
+  let groundY = height * 0.8;
+  let gravity = 1.0;             // stronger gravity for faster jump/fall
+  let jumpVelocity = 20;         // stronger jump
+  let moveSpeed = 8;             // speed at which obstacles move left
+  let spawnChance = 0.02;        // lower chance per frame for obstacle spawn
+  let spawnGapRatio = 0.4;       // obstacles at least this far apart (as fraction of width)
+
+  // Load ball image from repo root (two levels up)
   const ballImg = new Image();
   let ballLoaded = false;
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Obstacles: correct relative paths (two levels up) and URL‑encoded spaces
+  // Load obstacle images with spaces encoded
   const obstacleSources = [
     '../../obsticle%201%20coconut.png',
     '../../obsticle%202%20pickle.png',
@@ -50,80 +54,103 @@
     return img;
   });
 
+  // Ball object with rotation angle and fixed x-position
   const ball = {
     x: width * 0.15,
     y: groundY - 50,
     radius: 50,
     vy: 0,
-    draw() {
-      if (ballLoaded) {
-        ctx.drawImage(ballImg, this.x - this.radius, this.y - this.radius, this.radius*2, this.radius*2);
-      } else {
-        // Placeholder circle until image loads
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI*2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-      }
-    },
+    angle: 0,
     update() {
-      // Vertical movement
+      // vertical movement
       this.y += this.vy;
       this.vy += gravity;
       if (this.y + this.radius > groundY) {
         this.y = groundY - this.radius;
         this.vy = 0;
       }
-      // Horizontal movement
-      this.x += horizontalSpeed;
-      if (this.x - this.radius > width) {
-        this.x = -this.radius; // wrap to left when off-screen
+      // rotate as if rolling: amount based on moveSpeed
+      this.angle += moveSpeed / this.radius;
+    },
+    draw() {
+      ctx.save();
+      ctx.translate(this.x, this.y);
+      ctx.rotate(this.angle);
+      if (ballLoaded) {
+        ctx.drawImage(ballImg, -this.radius, -this.radius,
+                      this.radius*2, this.radius*2);
+      } else {
+        // placeholder circle if image hasn’t loaded yet
+        ctx.beginPath();
+        ctx.arc(0, 0, this.radius, 0, Math.PI*2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
       }
+      ctx.restore();
     }
   };
 
   const obstacles = [];
   function spawnObstacle() {
+    // pick an image
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
+    // random scale between 1.0 and 1.5 (varied size)
+    const scale = 1 + Math.random() * 0.5;
+    // base width for obstacles (tune as desired)
+    const baseWidth = 80;
+    // preserve aspect ratio if possible
+    const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    const widthScaled = baseWidth * scale;
+    const heightScaled = widthScaled / ratio;
     obstacles.push({
-      x: width + Math.random() * width,
-      y: groundY - 60,
-      width: 60,
-      height: 60,
+      x: width + Math.random() * width, // spawn off-screen to the right
+      y: groundY - heightScaled,
+      width: widthScaled,
+      height: heightScaled,
       img
     });
   }
 
+  // Game update
   function update() {
-    if (Math.random() < 0.05) spawnObstacle(); // frequent spawns
-    obstacles.forEach(ob => ob.x -= obstacleSpeed);
-    // remove obstacles once they’re off-screen
+    // spawn obstacles if few or spaced far apart
+    if (Math.random() < spawnChance) {
+      if (obstacles.length === 0 ||
+          (width - obstacles[obstacles.length - 1].x) > width * spawnGapRatio) {
+        spawnObstacle();
+      }
+    }
+    // move existing obstacles left
+    obstacles.forEach(ob => { ob.x -= moveSpeed; });
+    // remove off-screen obstacles
     while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
       obstacles.shift();
     }
     ball.update();
   }
 
+  // Drawing
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    // draw ground
+    // ground
     ctx.fillStyle = '#44aa44';
     ctx.fillRect(0, groundY, width, height - groundY);
-    // draw obstacles
+    // obstacles
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
     });
-    // draw ball on top
+    // ball on top
     ball.draw();
   }
 
+  // Animation loop
   function loop() {
     update();
     draw();
     requestAnimationFrame(loop);
   }
 
-  // Jump on spacebar or touch
+  // Jump on spacebar or touch (mobile)
   function handleJump() {
     if (ball.vy === 0 && ball.y + ball.radius >= groundY) {
       ball.vy = -jumpVelocity;
@@ -134,12 +161,14 @@
   });
   window.addEventListener('touchstart', handleJump);
 
-  // Adjust canvas on resize
+  // Resize handler
   window.addEventListener('resize', () => {
     width = window.innerWidth;
     height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
+    groundY = height * 0.8;
+    ball.x = width * 0.15;  // keep fixed x-position relative to new width
   });
 
   loop();
