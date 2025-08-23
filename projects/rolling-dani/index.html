@@ -23,17 +23,24 @@
 <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
+
   let width = window.innerWidth;
   let height = window.innerHeight;
   canvas.width = width;
   canvas.height = height;
 
-  let groundY = height * 0.8;
-  const gravity = 1.0;    // stronger gravity for fast fall
-  const jumpVelocity = 20; // strength of upward push
-  const moveSpeed = 8;     // obstacle scroll speed
-  const spawnChance = 0.02;
-  const spawnGapRatio = 0.4;
+  // Determine mobile vs desktop
+  const isMobile = window.matchMedia('(pointer: coarse)').matches || width <= 680;
+
+  // Global zoom factor: shrink everything to see more (30% zoom-out)
+  const ZOOM = 0.7;
+
+  let groundY = height * 0.8;             // ground baseline
+  const gravity = 1.0;                    // gravity strength
+  const jumpVelocity = 20;                // upward push
+  const moveSpeed = 8;                    // obstacle scrolling speed
+  const spawnChance = 0.02;               // probability of spawning
+  const spawnGapRatio = 0.4;              // minimum spacing between obstacles
 
   // Load ball image
   const ballImg = new Image();
@@ -41,7 +48,7 @@
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Load obstacles with encoded names
+  // Load obstacles
   const obstacleSources = [
     '../../obsticle%201%20coconut.png',
     '../../obsticle%202%20pickle.png',
@@ -53,34 +60,37 @@
     return img;
   });
 
-  // Ball with variable jump and rotation angle
+  // Ball properties
+  const baseRadius = 50;
   const ball = {
+    // On desktop, 15% larger; on mobile, normal
+    radius: baseRadius * (isMobile ? 1 : 1.15),
     x: width * 0.15,
-    y: groundY - 50,
-    radius: 50,
+    y: groundY - baseRadius,
     vy: 0,
     angle: 0,
+    spinFactor: 1,
     update() {
-      // apply vertical velocity and gravity
+      // apply jump/grav
       this.y += this.vy;
       this.vy += gravity;
-
       // floor collision
       if (this.y + this.radius > groundY) {
         this.y = groundY - this.radius;
         this.vy = 0;
+        // reset spin to default on landing
+        this.spinFactor = 1;
       }
-
       // ceiling cap
       if (this.y - this.radius < 0) {
         this.y = this.radius;
         this.vy = 0;
         jumpActive = false;
         jumpPressed = false;
+        this.spinFactor = 1;
       }
-
-      // slow rotation: divide by larger factor to slow spin
-      this.angle += moveSpeed / (this.radius * 4);
+      // spin slower by default, scaled by spinFactor
+      this.angle += (moveSpeed / (this.radius * 4)) * this.spinFactor;
     },
     draw() {
       ctx.save();
@@ -99,11 +109,12 @@
     }
   };
 
-  // Obstacles with varied sizes and spacing
+  // Obstacles array
   const obstacles = [];
   function spawnObstacle() {
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
-    const scale = 1 + Math.random() * 0.5;
+    // Desktop: scale between 2× and 3×; Mobile: half size
+    const scale = isMobile ? 0.5 : 2 + Math.random();
     const baseWidth = 80;
     const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
     const w = baseWidth * scale;
@@ -117,11 +128,10 @@
     });
   }
 
-  // Jump state flags
-  let jumpPressed = false; // is space currently held
-  let jumpActive = false;  // is a jump in progress
+  // Jump state
+  let jumpPressed = false;
+  let jumpActive = false;
 
-  // Event handlers for variable jump
   window.addEventListener('keydown', e => {
     if (e.code === 'Space') {
       if (!jumpPressed) {
@@ -133,13 +143,12 @@
       e.preventDefault();
     }
   });
-
   window.addEventListener('keyup', e => {
     if (e.code === 'Space') {
       jumpPressed = false;
     }
   });
-
+  // Touch for mobile
   window.addEventListener('touchstart', () => {
     if (!jumpPressed) {
       jumpPressed = true;
@@ -148,32 +157,33 @@
       }
     }
   });
-
   window.addEventListener('touchend', () => {
     jumpPressed = false;
   });
 
+  // Update game
   function update() {
-    // spawn obstacles with spacing
+    // spawn obstacles
     if (Math.random() < spawnChance) {
       if (obstacles.length === 0 ||
           (width - obstacles[obstacles.length - 1].x) > width * spawnGapRatio) {
         spawnObstacle();
       }
     }
-
+    // move obstacles left
     obstacles.forEach(ob => { ob.x -= moveSpeed; });
-
+    // remove old obstacles
     while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
       obstacles.shift();
     }
 
-    // apply jump physics: while jumpActive and key held, keep vy negative
+    // variable jump & spin ramp
     if (jumpActive) {
       if (jumpPressed) {
         ball.vy = -jumpVelocity;
+        // ramp spin factor up to 4× over time
+        ball.spinFactor = Math.min(ball.spinFactor + 0.05, 4);
       } else {
-        // key released: end jump, gravity takes over
         jumpActive = false;
       }
     }
@@ -181,14 +191,21 @@
     ball.update();
   }
 
+  // Draw everything with global zoom
   function draw() {
     ctx.clearRect(0, 0, width, height);
+    ctx.save();
+    ctx.scale(ZOOM, ZOOM);
+    // ground
     ctx.fillStyle = '#44aa44';
     ctx.fillRect(0, groundY, width, height - groundY);
+    // obstacles
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
     });
+    // ball
     ball.draw();
+    ctx.restore();
   }
 
   function loop() {
@@ -203,6 +220,8 @@
     canvas.width = width;
     canvas.height = height;
     groundY = height * 0.8;
+    // Recompute ball size and position on resize
+    ball.radius = baseRadius * (isMobile ? 1 : 1.15);
     ball.x = width * 0.15;
   });
 
