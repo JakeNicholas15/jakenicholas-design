@@ -1,158 +1,132 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>DanielleTheWalker.com — Gallery</title>
-
-<!-- Modern sans; light weights on homepage -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
-
-<style>
-  :root{
-    /* Smooth + plush 750ms animation */
-    --tile-anim: 0.75s cubic-bezier(.22,.61,.36,1);
-    /* Row heights (tweak anytime) */
-    --tile-collapsed-h: 14vh;
-    --tile-expanded-h:  46vh;
-    /* Layout */
-    --page-bg: #000;
-    --bar-h: 60px;
-  }
-
-  /* Accessibility: shorter motion if the user prefers */
-  @media (prefers-reduced-motion: reduce){
-    :root { --tile-anim: 0.2s linear; }
-  }
-
-  * { box-sizing: border-box; }
-  html, body { height:100%; }
-  body{
-    margin:0;
-    background: var(--page-bg);
-    color:#eaeaea;
-    font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-    font-weight:300; /* lighter look per your request */
-    overflow-x:hidden;
-  }
-
-  /* Top bar */
-  .topbar{
-    position: sticky; top:0; z-index: 10;
-    height: var(--bar-h);
-    background:#000;
-    border-bottom: 1px solid rgba(255,255,255,.08);
-    display:flex; align-items:center;
-    padding: 0 18px;
-  }
-  .brand{
-    font-size: clamp(18px, 2.2vw, 26px);
-    letter-spacing:.2px; font-weight:400; color:#fafafa;
-  }
-
-  /* Gallery column */
-  .gallery{
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 10px 0 80px; /* bottom space for OS bars */
-  }
-
-  /* Each full-width row/tile */
-  .tile{
-    position: relative;
-    width: 100%;
-    height: var(--tile-collapsed-h);
-    overflow: hidden;
-    background: #111;
-    isolation: isolate;
-    will-change: height, transform, filter, box-shadow, opacity;
-    transition:
-      height var(--tile-anim),
-      transform var(--tile-anim),
-      filter var(--tile-anim),
-      box-shadow var(--tile-anim),
-      opacity var(--tile-anim);
-    border-block: 1px solid rgba(255,255,255,.06);
-  }
-
-  /* Expanded state */
-  .tile:hover,
-  .tile:focus-within,
-  .tile.is-open {
-    height: var(--tile-expanded-h);
-  }
-
-  /* Make the content fill the tile */
-  .tile > a{
-    position:absolute; inset:0; display:block; text-decoration:none; color:inherit;
-  }
-
-  /* Thumbnail image */
-  .thumb{
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    object-fit: cover;
-    filter: saturate(1.05) contrast(1.02);
-    transform: scale(1);
-    transition:
-      transform var(--tile-anim),
-      filter var(--tile-anim),
-      opacity var(--tile-anim);
-    will-change: transform, filter, opacity;
-  }
-
-  /* Slight zoom on expand */
-  .tile:hover .thumb,
-  .tile.is-open .thumb,
-  .tile:focus-within .thumb {
-    transform: scale(1.03);
-    filter: saturate(1.15) contrast(1.06);
-  }
-
-  /* Title overlay (subtle) */
-  .title{
-    position:absolute; left:16px; bottom:14px; z-index:2;
-    padding: 8px 12px;
-    font-weight:400;
-    font-size: clamp(16px, 1.8vw, 22px);
-    color:#fff;
-    background: rgba(0,0,0,.35);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    border: 1px solid rgba(255,255,255,.18);
-    border-radius: 10px;
-    box-shadow: 0 8px 22px rgba(0,0,0,.35);
-    transition: transform var(--tile-anim), opacity var(--tile-anim);
-  }
-
-  /* A faint gradient at the bottom for legibility */
-  .fade{
-    position:absolute; inset:0;
-    background: linear-gradient(to top, rgba(0,0,0,.55), rgba(0,0,0,0) 45%);
-    z-index:1; pointer-events:none;
-    opacity:.9;
-    transition: opacity var(--tile-anim);
-  }
-  .tile:hover .fade,
-  .tile.is-open .fade,
-  .tile:focus-within .fade { opacity:1; }
-
-  /* Mobile tweaks: little taller collapsed rows so taps feel easier */
-  @media (max-width: 680px){
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DanielleTheWalker.com — Gallery</title>
+  <!-- Modern sans; light weights on homepage -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
+  <style>
     :root{
-      --tile-collapsed-h: 18vh;
-      --tile-expanded-h:  52vh;
+      /* Smooth + plush 750ms animation */
+      --tile-anim: 0.75s cubic-bezier(.22,.61,.36,1);
+      /* Row heights (tweak anytime) */
+      --tile-collapsed-h: 14vh;
+      --tile-expanded-h: 46vh;
+      /* Layout */
+      --page-bg: #000;
+      --bar-h: 60px;
     }
-    .topbar{ height: 56px; }
-  }
-</style>
+    /* Accessibility: shorter motion if the user prefers */
+    @media (prefers-reduced-motion: reduce){
+      :root { --tile-anim: 0.2s linear; }
+    }
+    * { box-sizing: border-box; }
+    html, body { height:100%; }
+    body{
+      margin:0;
+      background: var(--page-bg);
+      color:#eaeaea;
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      font-weight:300; /* lighter look on homepage */
+    }
+    /* Layout for the gallery */
+    main.gallery{
+      display:flex;
+      flex-direction: column;
+      overflow-x:hidden;
+    }
+    section.tile{
+      position:relative;
+      height: var(--tile-collapsed-h);
+      overflow:hidden;
+      margin-bottom: 8px;
+      transition: height var(--tile-anim);
+    }
+    section.tile.is-open{
+      height: var(--tile-expanded-h);
+    }
+    section.tile > a{
+      position:absolute; inset:0;
+      display:block;
+      text-decoration:none;
+      color:inherit;
+    }
+    /* Thumbnail image */
+    .thumb{
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      object-fit: cover;
+      filter: saturate(1.05) contrast(1.02);
+      transform: scale(1);
+      transition:
+        transform var(--tile-anim),
+        filter var(--tile-anim),
+        opacity var(--tile-anim);
+      will-change: transform, filter, opacity;
+    }
+    /* Slight zoom on expand */
+    .tile:hover .thumb,
+    .tile.is-open .thumb,
+    .tile:focus-within .thumb {
+      transform: scale(1.03);
+      filter: saturate(1.15) contrast(1.06);
+    }
+    /* Fade overlay to darken thumbnails */
+    .fade{
+      position:absolute; inset:0;
+      background:linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.65) 100%);
+      opacity:0;
+      transition: opacity var(--tile-anim);
+    }
+    .tile:hover .fade,
+    .tile.is-open .fade,
+    .tile:focus-within .fade {
+      opacity:1;
+    }
+    /* Title text on thumbnails */
+    .title{
+      position:absolute;
+      bottom:0; left:0; right:0;
+      padding:16px;
+      font-size:1.5rem;
+      font-weight:400;
+      opacity:0;
+      transition: opacity var(--tile-anim);
+    }
+    .tile:hover .title,
+    .tile.is-open .title,
+    .tile:focus-within .title {
+      opacity:1;
+    }
+    /* Top black bar with site title */
+    .topbar{
+      height:var(--bar-h);
+      background:rgba(0,0,0,0.8);
+      position:sticky;
+      top:0; left:0; right:0;
+      z-index:10;
+      display:flex;
+      align-items:center;
+      padding:0 16px;
+    }
+    .brand{
+      font-size:2rem;
+      font-weight:300;
+    }
+    /* Mobile tweaks: taller collapsed rows so taps feel easier */
+    @media (max-width: 680px){
+      :root{
+        --tile-collapsed-h: 18vh;
+        --tile-expanded-h: 52vh;
+      }
+      .topbar{ height: 56px; }
+    }
+  </style>
 </head>
 <body>
-
   <!-- Top black bar -->
   <div class="topbar">
     <div class="brand">DanielleTheWalker.com</div>
@@ -165,7 +139,7 @@
     <section class="tile" data-href="projects/danielle-doin-things/">
       <a href="projects/danielle-doin-things/" aria-label="Open Danielle Doin Things">
         <!-- Replace the src below with your real thumbnail file if different -->
-        <img class="thumb" src="projects/danielle-doin-things/thumbnail.jpg" alt="Danielle Doin Things thumbnail">
+        <img class="thumb" src="danielle-doin-things.jpg" alt="Danielle Doin Things thumbnail">
         <div class="fade"></div>
         <div class="title">Danielle Doin Things</div>
       </a>
@@ -174,8 +148,8 @@
     <!-- Danielle Flies -->
     <section class="tile" data-href="projects/danielle-flies/">
       <a href="projects/danielle-flies/" aria-label="Open Danielle Flies">
-        <!-- You said this exists: DaniFlies_thumb.png -->
-        <img class="thumb" src="projects/danielle-flies/DaniFlies_thumb.png" alt="Danielle Flies thumbnail">
+        <!-- Thumbnail -->
+        <img class="thumb" src="DaniFlies_thumb.png" alt="Danielle Flies thumbnail">
         <div class="fade"></div>
         <div class="title">Danielle Flies</div>
       </a>
@@ -185,76 +159,69 @@
     <section class="tile" data-href="projects/rolling-dani/">
       <a href="projects/rolling-dani/" aria-label="Open Rolling Dani">
         <!-- Use any image you prefer here -->
-        <img class="thumb" src="projects/rolling-dani/thumb.jpg" alt="Rolling Dani thumbnail">
+        <img class="thumb" src="Dani%20Roll%20thumb.jpg" alt="Rolling Dani thumbnail">
         <div class="fade"></div>
         <div class="title">Rolling Dani</div>
       </a>
     </section>
 
     <!-- Add more projects by copying a <section class="tile"> block -->
+
   </main>
 
-<script>
-/*
-  Mobile/Touch behavior:
-  - First tap expands the tile smoothly (0.75s)
-  - Second tap (within window) actually navigates
-  - On desktop, :hover handles expand; click navigates directly
-*/
-(function(){
-  const isTouch = matchMedia("(pointer: coarse)").matches || 'ontouchstart' in window;
-  const tiles = Array.from(document.querySelectorAll('.tile'));
-  let lastTapAt = 0;
-  const SECOND_TAP_WINDOW = 1100; // pairs nicely with 750ms animation
+  <script>
+    /*
+    Mobile/Touch behavior:
+      - First tap expands the tile smoothly (0.75s)
+      - Second tap (within window) actually navigates
+      - On desktop, :hover handles expand; click navigates directly
+    */
+    (function(){
+      const isTouch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+      const tiles = Array.from(document.querySelectorAll('.tile'));
+      let lastTapAt = 0;
+      const SECOND_TAP_WINDOW = 1100; // pairs nicely with 750ms animation
 
-  // Collapse other tiles when one opens (nice + tidy)
-  function closeOthers(except){
-    tiles.forEach(t => { if(t !== except) t.classList.remove('is-open'); });
-  }
+      // Collapse other tiles when one opens (nice + tidy)
+      function closeOthers(except){
+        tiles.forEach(t => { if(t !== except) t.classList.remove('is-open'); });
+      }
 
-  tiles.forEach(tile => {
-    const link = tile.querySelector('a');
-    const href = tile.dataset.href || link.getAttribute('href');
-
-    if (isTouch){
-      // First tap expands, second tap within window navigates
-      link.addEventListener('click', (e) => {
-        const now = Date.now();
-        const alreadyOpen = tile.classList.contains('is-open');
-
-        // If not open or last tap too old, treat as "expand"
-        if (!alreadyOpen || (now - lastTapAt) > SECOND_TAP_WINDOW){
-          e.preventDefault();
-          closeOthers(tile);
-          tile.classList.add('is-open');
-          lastTapAt = now;
-          // Optional: scroll into view if needed
-          tile.scrollIntoView({behavior:'smooth', block:'nearest'});
-          return;
+      tiles.forEach(tile => {
+        const link = tile.querySelector('a');
+        if(isTouch){
+          link.addEventListener('click', (e) => {
+            // If this tile is not open: expand it, don't navigate yet
+            if(!tile.classList.contains('is-open')){
+              e.preventDefault();
+              closeOthers(tile);
+              tile.classList.add('is-open');
+              lastTapAt = Date.now();
+              return;
+            }
+            // If within the second-tap window: allow navigation
+            const now = Date.now();
+            if(now - lastTapAt < SECOND_TAP_WINDOW){
+              return; // let default link navigation occur
+            }
+            // Otherwise, treat as first tap again
+            e.preventDefault();
+            closeOthers(tile);
+            tile.classList.add('is-open');
+            lastTapAt = now;
+          });
+        }else{
+          // Desktop: hovering expands; clicking navigates
+          tile.addEventListener('mouseenter', () => {
+            closeOthers(tile);
+            tile.classList.add('is-open');
+          });
+          tile.addEventListener('mouseleave', () => {
+            tile.classList.remove('is-open');
+          });
         }
-
-        // Otherwise, let it navigate normally
       });
-    } else {
-      // Desktop: when hovering one row, collapse the others for a clean stack
-      tile.addEventListener('mouseenter', () => {
-        closeOthers(tile);
-      });
-      // If you also want click-to-pin-open on desktop, uncomment below:
-      // tile.addEventListener('click', (e) => {
-      //   if (!tile.classList.contains('is-open')) {
-      //     e.preventDefault();
-      //     closeOthers(tile);
-      //     tile.classList.add('is-open');
-      //   }
-      // });
-    }
-  });
-
-  // Optional: start with the first tile open for a nice landing
-  // tiles[0]?.classList.add('is-open');
-})();
-</script>
-
+    })();
+  </script>
 </body>
 </html>
