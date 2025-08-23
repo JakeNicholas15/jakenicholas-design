@@ -23,26 +23,25 @@
 <script>
   const canvas = document.getElementById('game');
   const ctx = canvas.getContext('2d');
-
   let width = window.innerWidth;
   let height = window.innerHeight;
   canvas.width = width;
   canvas.height = height;
 
   let groundY = height * 0.8;
-  let gravity = 1.0;             // stronger gravity for faster jump/fall
-  let jumpVelocity = 20;         // stronger jump
-  let moveSpeed = 8;             // speed at which obstacles move left
-  let spawnChance = 0.02;        // lower chance per frame for obstacle spawn
-  let spawnGapRatio = 0.4;       // obstacles at least this far apart (as fraction of width)
+  const gravity = 1.0;    // stronger gravity for fast fall
+  const jumpVelocity = 20; // strength of upward push
+  const moveSpeed = 8;     // obstacle scroll speed
+  const spawnChance = 0.02;
+  const spawnGapRatio = 0.4;
 
-  // Load ball image from repo root (two levels up)
+  // Load ball image
   const ballImg = new Image();
   let ballLoaded = false;
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Load obstacle images with spaces encoded
+  // Load obstacles with encoded names
   const obstacleSources = [
     '../../obsticle%201%20coconut.png',
     '../../obsticle%202%20pickle.png',
@@ -54,7 +53,7 @@
     return img;
   });
 
-  // Ball object with rotation angle and fixed x-position
+  // Ball with variable jump and rotation angle
   const ball = {
     x: width * 0.15,
     y: groundY - 50,
@@ -62,15 +61,26 @@
     vy: 0,
     angle: 0,
     update() {
-      // vertical movement
+      // apply vertical velocity and gravity
       this.y += this.vy;
       this.vy += gravity;
+
+      // floor collision
       if (this.y + this.radius > groundY) {
         this.y = groundY - this.radius;
         this.vy = 0;
       }
-      // rotate as if rolling: amount based on moveSpeed
-      this.angle += moveSpeed / this.radius;
+
+      // ceiling cap
+      if (this.y - this.radius < 0) {
+        this.y = this.radius;
+        this.vy = 0;
+        jumpActive = false;
+        jumpPressed = false;
+      }
+
+      // slow rotation: divide by larger factor to slow spin
+      this.angle += moveSpeed / (this.radius * 4);
     },
     draw() {
       ctx.save();
@@ -80,7 +90,6 @@
         ctx.drawImage(ballImg, -this.radius, -this.radius,
                       this.radius*2, this.radius*2);
       } else {
-        // placeholder circle if image hasn’t loaded yet
         ctx.beginPath();
         ctx.arc(0, 0, this.radius, 0, Math.PI*2);
         ctx.fillStyle = '#fff';
@@ -90,85 +99,111 @@
     }
   };
 
+  // Obstacles with varied sizes and spacing
   const obstacles = [];
   function spawnObstacle() {
-    // pick an image
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
-    // random scale between 1.0 and 1.5 (varied size)
     const scale = 1 + Math.random() * 0.5;
-    // base width for obstacles (tune as desired)
     const baseWidth = 80;
-    // preserve aspect ratio if possible
     const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
-    const widthScaled = baseWidth * scale;
-    const heightScaled = widthScaled / ratio;
+    const w = baseWidth * scale;
+    const h = w / ratio;
     obstacles.push({
-      x: width + Math.random() * width, // spawn off-screen to the right
-      y: groundY - heightScaled,
-      width: widthScaled,
-      height: heightScaled,
+      x: width + Math.random() * width,
+      y: groundY - h,
+      width: w,
+      height: h,
       img
     });
   }
 
-  // Game update
+  // Jump state flags
+  let jumpPressed = false; // is space currently held
+  let jumpActive = false;  // is a jump in progress
+
+  // Event handlers for variable jump
+  window.addEventListener('keydown', e => {
+    if (e.code === 'Space') {
+      if (!jumpPressed) {
+        jumpPressed = true;
+        if (!jumpActive && ball.y + ball.radius >= groundY) {
+          jumpActive = true;
+        }
+      }
+      e.preventDefault();
+    }
+  });
+
+  window.addEventListener('keyup', e => {
+    if (e.code === 'Space') {
+      jumpPressed = false;
+    }
+  });
+
+  window.addEventListener('touchstart', () => {
+    if (!jumpPressed) {
+      jumpPressed = true;
+      if (!jumpActive && ball.y + ball.radius >= groundY) {
+        jumpActive = true;
+      }
+    }
+  });
+
+  window.addEventListener('touchend', () => {
+    jumpPressed = false;
+  });
+
   function update() {
-    // spawn obstacles if few or spaced far apart
+    // spawn obstacles with spacing
     if (Math.random() < spawnChance) {
       if (obstacles.length === 0 ||
           (width - obstacles[obstacles.length - 1].x) > width * spawnGapRatio) {
         spawnObstacle();
       }
     }
-    // move existing obstacles left
+
     obstacles.forEach(ob => { ob.x -= moveSpeed; });
-    // remove off-screen obstacles
+
     while (obstacles.length && obstacles[0].x + obstacles[0].width < 0) {
       obstacles.shift();
     }
+
+    // apply jump physics: while jumpActive and key held, keep vy negative
+    if (jumpActive) {
+      if (jumpPressed) {
+        ball.vy = -jumpVelocity;
+      } else {
+        // key released: end jump, gravity takes over
+        jumpActive = false;
+      }
+    }
+
     ball.update();
   }
 
-  // Drawing
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    // ground
     ctx.fillStyle = '#44aa44';
     ctx.fillRect(0, groundY, width, height - groundY);
-    // obstacles
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
     });
-    // ball on top
     ball.draw();
   }
 
-  // Animation loop
   function loop() {
     update();
     draw();
     requestAnimationFrame(loop);
   }
 
-  // Jump on spacebar or touch (mobile)
-  function handleJump() {
-    if (ball.vy === 0 && ball.y + ball.radius >= groundY) {
-      ball.vy = -jumpVelocity;
-    }
-  }
-  window.addEventListener('keydown', e => {
-    if (e.code === 'Space') handleJump();
-  });
-  window.addEventListener('touchstart', handleJump);
-
-  // Resize handler
   window.addEventListener('resize', () => {
     width = window.innerWidth;
     height = window.innerHeight;
     canvas.width = width;
     canvas.height = height;
     groundY = height * 0.8;
-    ball.x = width * 0.15;  // keep fixed x-position relative to new width
+    ball.x = width * 0.15;
   });
 
   loop();
