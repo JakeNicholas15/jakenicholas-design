@@ -34,17 +34,18 @@
   let groundY = height * 0.8;
   const gravity = 1.0;
   const jumpVelocity = 20;
-  const moveSpeed = 7;          // slowed down from 8 to 7
+  const moveSpeed = 7;                // ← your requested speed
+  const SKY_SCROLL_RATIO = 1/3;       // ← sky parallax speed (1/3 of moveSpeed)
   const spawnChance = 0.02;
   const spawnGapRatio = 0.4;
 
-  // Load ball
+  // Ball image
   const ballImg = new Image();
   let ballLoaded = false;
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Load obstacles
+  // Obstacles
   const obstacleSources = [
     '../../obsticle%201%20coconut.png',
     '../../obsticle%202%20pickle.png',
@@ -56,7 +57,7 @@
     return img;
   });
 
-  // Load grass
+  // Grass (seamless) — scrolls at full speed
   const grassImg = new Image();
   let grassLoaded = false;
   let grassWidth = 0;
@@ -67,13 +68,14 @@
   };
   let grassOffset = 0;
 
-  // Load sky
+  // Sky (parallax) — now seamless + wraps at 1/3 speed
   const skyImg = new Image();
   let skyLoaded = false;
+  let skyOffset = 0;                  // ← parallax offset
   skyImg.src = 'DaniRollSky.jpg';
   skyImg.onload = () => { skyLoaded = true; };
 
-  // Ball definition
+  // Ball
   const baseRadius = 50;
   const ball = {
     radius: baseRadius * (isMobile ? 1 : 1.15),
@@ -85,6 +87,7 @@
     update() {
       this.y += this.vy;
       this.vy += gravity;
+
       if (this.y + this.radius > groundY) {
         this.y = groundY - this.radius;
         this.vy = 0;
@@ -150,9 +153,7 @@
     }
   });
   window.addEventListener('keyup', e => {
-    if (e.code === 'Space') {
-      jumpPressed = false;
-    }
+    if (e.code === 'Space') jumpPressed = false;
   });
   window.addEventListener('touchstart', () => {
     if (!jumpPressed) {
@@ -162,13 +163,10 @@
       }
     }
   });
-  window.addEventListener('touchend', () => {
-    jumpPressed = false;
-  });
+  window.addEventListener('touchend', () => { jumpPressed = false; });
 
-  // Update logic
   function update() {
-    // spawn obstacles if spaced
+    // spawn obstacles with spacing
     if (Math.random() < spawnChance) {
       if (obstacles.length === 0 ||
           (width - obstacles[obstacles.length - 1].x) > width * spawnGapRatio) {
@@ -180,12 +178,22 @@
       obstacles.shift();
     }
 
-    // scroll grass
+    // parallax sky scroll (wrap by tile width)
+    if (skyLoaded) {
+      // bottom of the sky is 27px + 20px below the grass top (47px total)
+      const grassTop = groundY - 50;
+      const bottomY = grassTop + 47;
+      const skyScale = bottomY / skyImg.height;              // fill from 0 -> bottomY
+      const tileW = skyImg.width * skyScale;
+
+      skyOffset -= moveSpeed * SKY_SCROLL_RATIO;
+      if (tileW > 0 && skyOffset <= -tileW) skyOffset += tileW;
+    }
+
+    // grass scroll
     if (grassLoaded && grassWidth > 0) {
       grassOffset -= moveSpeed;
-      if (grassOffset <= -grassWidth) {
-        grassOffset += grassWidth;
-      }
+      if (grassOffset <= -grassWidth) grassOffset += grassWidth;
     }
 
     // jumping and spin
@@ -201,26 +209,32 @@
     ball.update();
   }
 
-  // Draw scene
   function draw() {
     ctx.clearRect(0, 0, width, height);
 
-    // draw the sky with correct aspect ratio (scaled to canvas width)
+    // --- SKY (tiled, parallax) ---
     if (skyLoaded) {
-      const grassTop = groundY - 50;         // top of the grass strip
-      const bottomY = grassTop + 47;         // 27px + 20px offset below top of grass
-      const scale = width / skyImg.width;
-      const skyHeight = skyImg.height * scale;
-      const skyY = bottomY - skyHeight;
-      ctx.drawImage(skyImg, 0, skyY, width, skyHeight);
+      const grassTop = groundY - 50;
+      const bottomY = grassTop + 47;
+      const skyScale = bottomY / skyImg.height;     // preserves aspect ratio
+      const skyHeight = bottomY;                    // draw from 0 to bottomY
+      const tileW = skyImg.width * skyScale;
+      let x = skyOffset;
+
+      // draw enough tiles to cover canvas width
+      while (x > 0) x -= tileW;
+      for (; x < width; x += tileW) {
+        ctx.drawImage(skyImg, 0, 0, skyImg.width, skyImg.height,
+                      x, 0, tileW, skyHeight);
+      }
     } else {
       ctx.fillStyle = '#87ceeb';
       ctx.fillRect(0, 0, width, groundY);
     }
 
-    // draw scrolling grass (raised 50px)
+    // --- GRASS (tiled) ---
     if (grassLoaded && grassWidth > 0) {
-      const y = groundY - 50;
+      const y = groundY - 50; // raised
       const h = grassImg.height;
       for (let x = grassOffset; x < width; x += grassWidth) {
         ctx.drawImage(grassImg, x, y, grassWidth, h);
@@ -230,7 +244,7 @@
       ctx.fillRect(0, groundY, width, height - groundY);
     }
 
-    // draw obstacles and ball
+    // Obstacles + Ball
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
     });
