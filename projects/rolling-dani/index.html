@@ -179,35 +179,43 @@
     }
 
     // parallax sky scroll (wrap by tile width)
-    if (skyLoaded) {
-      // bottom of the sky is 27px + 20px below the grass top (47px total)
-      const grassTop = groundY - 50;
-      const bottomY = grassTop + 47;
-      const skyScale = bottomY / skyImg.height;              // fill from 0 -> bottomY
-      const tileW = skyImg.width * skyScale;
+// --- SKY (tiled, bottom-anchored, parallax) ---
+if (skyLoaded) {
+  // Where the sky should meet the grass:
+  // grass is drawn at (groundY - 50), and we want the sky bottom 47px below that top
+  const grassTop = groundY - 50;
+  const bottomY  = grassTop + 47;           // target y for the BOTTOM of the sky
 
-      skyOffset -= moveSpeed * SKY_SCROLL_RATIO;
-      if (tileW > 0 && skyOffset <= -tileW) skyOffset += tileW;
-    }
+  // Choose a scale that guarantees full coverage from canvas top to bottomY,
+  // and full width. We bottom-anchor so any excess height crops off the top.
+  const scaleByHeight = bottomY / skyImg.height;  // exact fit by height
+  const scaleByWidth  = width   / skyImg.width;   // exact fit by width
+  const scale         = Math.max(scaleByHeight, scaleByWidth);
 
-    // grass scroll
-    if (grassLoaded && grassWidth > 0) {
-      grassOffset -= moveSpeed;
-      if (grassOffset <= -grassWidth) grassOffset += grassWidth;
-    }
+  const scaledW = skyImg.width  * scale;
+  const scaledH = skyImg.height * scale;
 
-    // jumping and spin
-    if (jumpActive) {
-      if (jumpPressed) {
-        ball.vy = -jumpVelocity;
-        ball.spinFactor = Math.min(ball.spinFactor + 0.05, 4);
-      } else {
-        jumpActive = false;
-      }
-    }
+  // Bottom-anchored: draw so image bottom sits exactly at bottomY
+  const skyY = bottomY - scaledH;
 
-    ball.update();
+  // Wrap horizontally for parallax
+  // Start tile x so we cover the whole canvas to the left
+  let x = skyOffset % scaledW;
+  if (x > 0) x -= scaledW;
+
+  for (; x < width; x += scaledW) {
+    ctx.drawImage(
+      skyImg,
+      0, 0, skyImg.width, skyImg.height,  // full source
+      x, skyY, scaledW, scaledH           // destination, bottom-anchored
+    );
   }
+} else {
+  // Fallback color until image loads
+  ctx.fillStyle = '#87ceeb';
+  ctx.fillRect(0, 0, width, groundY);
+}
+
 
   function draw() {
     ctx.clearRect(0, 0, width, height);
