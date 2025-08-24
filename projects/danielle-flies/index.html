@@ -32,7 +32,7 @@
   const isMobile = window.matchMedia('(pointer: coarse)').matches || width <= 680;
 
   let groundY = height * 0.8;
-  const gravity = 1.5;
+  const gravity = .8;
   const jumpVelocity = 20;
   const moveSpeed = 7;                // ← your requested speed
   const SKY_SCROLL_RATIO = 1/3;       // ← sky parallax speed (1/3 of moveSpeed)
