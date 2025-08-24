@@ -182,7 +182,7 @@
     if (skyLoaded) {
       // bottom of the sky is 27px + 20px below the grass top (47px total)
       const grassTop = groundY - 50;
-      const bottomY = grassTop + 47;
+      const bottomY = grassTop + 35;
       const skyScale = bottomY / skyImg.height;              // fill from 0 -> bottomY
       const tileW = skyImg.width * skyScale;
 
@@ -215,7 +215,7 @@
     // --- SKY (tiled, parallax) ---
     if (skyLoaded) {
       const grassTop = groundY - 50;
-      const bottomY = grassTop + 30;
+      const bottomY = grassTop + 35;
       const skyScale = bottomY / skyImg.height;     // preserves aspect ratio
       const skyHeight = bottomY;                    // draw from 0 to bottomY
       const tileW = skyImg.width * skyScale;
