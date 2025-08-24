@@ -29,23 +29,22 @@
   canvas.width = width;
   canvas.height = height;
 
-  // Mobile detection
   const isMobile = window.matchMedia('(pointer: coarse)').matches || width <= 680;
 
-  let groundY = height * 0.8;  // baseline for ball/obstacle y positions
+  let groundY = height * 0.8;
   const gravity = 1.0;
   const jumpVelocity = 20;
-  const moveSpeed = 6;
+  const moveSpeed = 7;
   const spawnChance = 0.02;
   const spawnGapRatio = 0.4;
 
-  // Load ball
+  // Load the ball
   const ballImg = new Image();
   let ballLoaded = false;
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Load obstacle images
+  // Load obstacles
   const obstacleSources = [
     '../../obsticle%201%20coconut.png',
     '../../obsticle%202%20pickle.png',
@@ -57,19 +56,24 @@
     return img;
   });
 
-  // Load grass for the ground
+  // Load grass
   const grassImg = new Image();
   let grassLoaded = false;
   let grassWidth = 0;
-  grassImg.src = 'DaniRollGrass.png'; // in the same folder as index.html
+  grassImg.src = 'DaniRollGrass.png';
   grassImg.onload = () => {
     grassLoaded = true;
     grassWidth = grassImg.width;
   };
+  let grassOffset = 0; // for scrolling
 
-  let grassOffset = 0;  // horizontal offset for scrolling grass
+  // Load sky
+  const skyImg = new Image();
+  let skyLoaded = false;
+  skyImg.src = 'DaniRollSky.jpg';
+  skyImg.onload = () => { skyLoaded = true; };
 
-  // Ball properties
+  // Ball object
   const baseRadius = 50;
   const ball = {
     radius: baseRadius * (isMobile ? 1 : 1.15),
@@ -93,7 +97,7 @@
         jumpPressed = false;
         this.spinFactor = 1;
       }
-      this.angle += (moveSpeed / (this.radius * 4)) * this.spinFactor;
+      this.angle += (moveSpeed / (this.radius * 6)) * this.spinFactor;
     },
     draw() {
       ctx.save();
@@ -116,7 +120,7 @@
   const obstacles = [];
   function spawnObstacle() {
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
-    const scale = isMobile ? 0.5 : 1.5 + Math.random() * 0.5; // 150–200% on desktop
+    const scale = isMobile ? 0.5 : 1.5 + Math.random() * 0.5;
     const baseWidth = 80;
     const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
     const w = baseWidth * scale;
@@ -162,9 +166,9 @@
     jumpPressed = false;
   });
 
-  // Game update
+  // Update the game
   function update() {
-    // spawn obstacles with gap check
+    // spawn obstacles
     if (Math.random() < spawnChance) {
       if (obstacles.length === 0 ||
           (width - obstacles[obstacles.length - 1].x) > width * spawnGapRatio) {
@@ -176,7 +180,7 @@
       obstacles.shift();
     }
 
-    // scrolling grass
+    // scroll the grass
     if (grassLoaded && grassWidth > 0) {
       grassOffset -= moveSpeed;
       if (grassOffset <= -grassWidth) {
@@ -184,7 +188,7 @@
       }
     }
 
-    // jump and spin ramp
+    // jump and spin
     if (jumpActive) {
       if (jumpPressed) {
         ball.vy = -jumpVelocity;
@@ -200,20 +204,33 @@
   // Draw everything
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    // Draw grass (50px higher so ball/obstacles aren't perched on the very edge)
+
+    // Draw sky: position its bottom 27px below the top of the grass strip
+    if (skyLoaded) {
+      const grassTop = groundY - 50;              // top of grass strip
+      const bottomY = grassTop + 27;              // where the sky should end
+      const skyY = bottomY - skyImg.height;       // top of sky image
+      ctx.drawImage(skyImg, 0, skyY, width, skyImg.height);
+    } else {
+      // fallback sky color
+      ctx.fillStyle = '#87ceeb';
+      ctx.fillRect(0, 0, width, groundY);
+    }
+
+    // Draw grass strip, raised by 50px
     if (grassLoaded && grassWidth > 0) {
       const y = groundY - 50;
       const h = grassImg.height;
-      // Draw the grass twice (or more) to cover the entire width seamlessly
       for (let x = grassOffset; x < width; x += grassWidth) {
         ctx.drawImage(grassImg, x, y, grassWidth, h);
       }
     } else {
-      // fallback if grass not yet loaded
+      // fallback green ground
       ctx.fillStyle = '#44aa44';
       ctx.fillRect(0, groundY, width, height - groundY);
     }
-    // Draw obstacles and ball
+
+    // draw obstacles and ball
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
     });
