@@ -29,35 +29,23 @@
   canvas.width = width;
   canvas.height = height;
 
+  // Mobile detection
   const isMobile = window.matchMedia('(pointer: coarse)').matches || width <= 680;
 
-  let groundY = height * 0.8;
+  let groundY = height * 0.8;  // baseline for ball/obstacle y positions
   const gravity = 1.0;
   const jumpVelocity = 20;
   const moveSpeed = 8;
   const spawnChance = 0.02;
   const spawnGapRatio = 0.4;
 
-// Grass image for the ground
-const grassImg = new Image();
-let grassLoaded = false;
-grassImg.src = 'DaniRollGrass.png'; // lives alongside index.html
-grassImg.onload = () => { grassLoaded = true; };
-
-
-
-// Height of the “blades” that rise above the flat dirt area.
-// Increase this if you need the sprites to sit lower.
-const grassBladeHeight = 20;
-
-
-  // Ball image
+  // Load ball
   const ballImg = new Image();
   let ballLoaded = false;
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Obstacles
+  // Load obstacle images
   const obstacleSources = [
     '../../obsticle%201%20coconut.png',
     '../../obsticle%202%20pickle.png',
@@ -68,6 +56,18 @@ const grassBladeHeight = 20;
     img.src = src;
     return img;
   });
+
+  // Load grass for the ground
+  const grassImg = new Image();
+  let grassLoaded = false;
+  let grassWidth = 0;
+  grassImg.src = 'DaniRollGrass.png'; // in the same folder as index.html
+  grassImg.onload = () => {
+    grassLoaded = true;
+    grassWidth = grassImg.width;
+  };
+
+  let grassOffset = 0;  // horizontal offset for scrolling grass
 
   // Ball properties
   const baseRadius = 50;
@@ -93,7 +93,7 @@ const grassBladeHeight = 20;
         jumpPressed = false;
         this.spinFactor = 1;
       }
-      this.angle += (moveSpeed / (this.radius * 3)) * this.spinFactor;
+      this.angle += (moveSpeed / (this.radius * 4)) * this.spinFactor;
     },
     draw() {
       ctx.save();
@@ -112,13 +112,12 @@ const grassBladeHeight = 20;
     }
   };
 
-  // Obstacles array
+  // Obstacles
   const obstacles = [];
   function spawnObstacle() {
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
-    // Desktop 150–200% bigger; mobile 50% smaller
-    const scale = isMobile ? 0.5 : 1 + Math.random() * 1.5;
-    const baseWidth = 100;
+    const scale = isMobile ? 0.5 : 1.5 + Math.random() * 0.5; // 150–200% on desktop
+    const baseWidth = 80;
     const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
     const w = baseWidth * scale;
     const h = w / ratio;
@@ -177,7 +176,15 @@ const grassBladeHeight = 20;
       obstacles.shift();
     }
 
-    // variable jump & spin ramp
+    // scrolling grass
+    if (grassLoaded && grassWidth > 0) {
+      grassOffset -= moveSpeed;
+      if (grassOffset <= -grassWidth) {
+        grassOffset += grassWidth;
+      }
+    }
+
+    // jump and spin ramp
     if (jumpActive) {
       if (jumpPressed) {
         ball.vy = -jumpVelocity;
@@ -190,25 +197,26 @@ const grassBladeHeight = 20;
     ball.update();
   }
 
-  // Draw everything without global zoom
+  // Draw everything
   function draw() {
     ctx.clearRect(0, 0, width, height);
-// Draw the grass strip at the ground line.
-if (grassLoaded) {
-  // Use the image’s natural height (or scale width to fit canvas).
-  const h = grassImg.height;
-  ctx.drawImage(grassImg, 0, groundY, width, h);
-} else {
-  // Fallback to green rectangle if the image hasn't loaded.
-  ctx.fillStyle = '#44aa44';
-  ctx.fillRect(0, groundY, width, height - groundY);
-}
-
-    // obstacles
+    // Draw grass (50px higher so ball/obstacles aren't perched on the very edge)
+    if (grassLoaded && grassWidth > 0) {
+      const y = groundY - 50;
+      const h = grassImg.height;
+      // Draw the grass twice (or more) to cover the entire width seamlessly
+      for (let x = grassOffset; x < width; x += grassWidth) {
+        ctx.drawImage(grassImg, x, y, grassWidth, h);
+      }
+    } else {
+      // fallback if grass not yet loaded
+      ctx.fillStyle = '#44aa44';
+      ctx.fillRect(0, groundY, width, height - groundY);
+    }
+    // Draw obstacles and ball
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
     });
-    // ball
     ball.draw();
   }
 
