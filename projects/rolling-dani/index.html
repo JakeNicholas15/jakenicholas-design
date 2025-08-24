@@ -143,11 +143,11 @@
   const obstacles = [];
   function spawnObstacle() {
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
-    const scale = isMobile ? 0.5 : 1 + Math.random() * 1.5;
-    const baseWidth = 80;
-    const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
-    const w = baseWidth * scale;
-    const h = w / ratio;
+const scale = isMobile ? 0.5 : 1.5 + Math.random() * 0.5; 
+const baseHeight = 80; // change this to control obstacle height
+const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+const h = baseHeight * scale;
+const w = h * ratio;
     obstacles.push({
       x: width + Math.random() * width,
       y: groundY - h,
