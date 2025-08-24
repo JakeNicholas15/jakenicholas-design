@@ -32,7 +32,7 @@
   const isMobile = window.matchMedia('(pointer: coarse)').matches || width <= 680;
 
   let groundY = height * 0.8;
-  const gravity = 1.5;
+  const gravity = .8;
   const jumpVelocity = 20;
   const moveSpeed = 7;                // ← world scroll speed
   const SKY_SCROLL_RATIO = 1/3;       // ← sky parallax speed (1/3 of moveSpeed)
@@ -319,7 +319,7 @@
 
     // --- SCORE (top-center) ---
     // Edit score SIZE here:
-    ctx.font = 'bold 40px Arial, Helvetica, sans-serif';
+    ctx.font = 'bold 64px Arial, Helvetica, sans-serif';
     // Edit score COLOR here:
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
