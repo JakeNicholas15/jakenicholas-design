@@ -38,6 +38,19 @@
   const spawnChance = 0.02;
   const spawnGapRatio = 0.4;
 
+// Grass image for the ground
+const grassImg = new Image();
+let grassLoaded = false;
+grassImg.src = 'DaniRollGrass.png'; // lives alongside index.html
+grassImg.onload = () => { grassLoaded = true; };
+
+
+
+// Height of the “blades” that rise above the flat dirt area.
+// Increase this if you need the sprites to sit lower.
+const grassBladeHeight = 20;
+
+
   // Ball image
   const ballImg = new Image();
   let ballLoaded = false;
@@ -180,9 +193,17 @@
   // Draw everything without global zoom
   function draw() {
     ctx.clearRect(0, 0, width, height);
-    // ground
-    ctx.fillStyle = '#44aa44';
-    ctx.fillRect(0, groundY, width, height - groundY);
+// Draw the grass strip at the ground line.
+if (grassLoaded) {
+  // Use the image’s natural height (or scale width to fit canvas).
+  const h = grassImg.height;
+  ctx.drawImage(grassImg, 0, groundY, width, h);
+} else {
+  // Fallback to green rectangle if the image hasn't loaded.
+  ctx.fillStyle = '#44aa44';
+  ctx.fillRect(0, groundY, width, height - groundY);
+}
+
     // obstacles
     obstacles.forEach(ob => {
       ctx.drawImage(ob.img, ob.x, ob.y, ob.width, ob.height);
