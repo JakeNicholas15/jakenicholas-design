@@ -104,8 +104,8 @@
   function spawnObstacle() {
     const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
     // Desktop 150–200% bigger; mobile 50% smaller
-    const scale = isMobile ? 0.5 : 1.5 + Math.random() * 0.5;
-    const baseWidth = 80;
+    const scale = isMobile ? 0.5 : 1 + Math.random() * 1.5;
+    const baseWidth = 100;
     const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
     const w = baseWidth * scale;
     const h = w / ratio;
