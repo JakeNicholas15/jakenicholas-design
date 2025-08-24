@@ -32,7 +32,7 @@
   const isMobile = window.matchMedia('(pointer: coarse)').matches || width <= 680;
 
   let groundY = height * 0.8;
-  const gravity = .8;
+  const gravity = 0.8;
   const jumpVelocity = 20;
 
   const BASE_SPEED = 7;               // base world scroll speed
@@ -74,16 +74,16 @@
     { src: '../../obsticle%203%20tomato.png',  type: 'circle',  radiusFactor: 0.48 },
 
     // Ellipse collider (pickle): skinny horizontally, tall vertically
-{ 
-  src: '../../obsticle%202%20pickle.png',
-  type: 'ellipse',
-  // Shrink radii a bit (narrower, less tall)
-  rxFactor: 0.33,   // was 0.38
-  ryFactor: 0.80,   // was 0.90
-  // Trim transparent space: treat top 15% and bottom 5% as padding
-  padTop: 0.15,
-  padBottom: 0.05
-}
+    {
+      src: '../../obsticle%202%20pickle.png',
+      type: 'ellipse',
+      rxFactor: 0.33,   // narrower horizontally
+      ryFactor: 0.80,   // slightly shorter vertically
+      padTop: 0.15,     // trim transparent space from top (15%)
+      padBottom: 0.05   // trim from bottom (5%)
+    }
+  ];
+
   // Load images for each def
   obstacleDefs.forEach(d => {
     const img = new Image();
@@ -159,7 +159,7 @@
     const def = obstacleDefs[Math.floor(Math.random() * obstacleDefs.length)];
     const img = def.img;
 
-    // Pick a random height between 100px and 350px (you had 100–350 in your file)
+    // Pick a random height between 100px and 350px
     const minHeight = 100;
     const maxHeight = 350;
     const h = minHeight + Math.random() * (maxHeight - minHeight);
@@ -306,29 +306,28 @@
     // collider-aware collision detection
     for (let i = 0; i < obstacles.length; i++) {
       const ob = obstacles[i];
-      const cx = ob.x + ob.width  * 0.5; // obstacle center
-      const cy = ob.y + ob.height * 0.5;
 
       let hit = false;
       if (ob.collider && ob.collider.type === 'circle') {
+        // Circle collider centered on obstacle center
+        const cx = ob.x + ob.width  * 0.5;
+        const cy = ob.y + ob.height * 0.5;
         const cr = Math.min(ob.width, ob.height) * (ob.collider.radiusFactor || 0.5);
         hit = circleCircleCollides(ball.x, ball.y, ball.radius, cx, cy, cr);
 
       } else if (ob.collider && ob.collider.type === 'ellipse') {
-  // Optional transparent padding trimming
-  const padTop = ob.collider.padTop || 0;
-  const padBottom = ob.collider.padBottom || 0;
-  const trimmedH = ob.height * Math.max(0, 1 - padTop - padBottom);
+        // Ellipse collider centered on a trimmed box (remove transparent top/bottom)
+        const padTop = ob.collider.padTop || 0;
+        const padBottom = ob.collider.padBottom || 0;
+        const trimmedH = ob.height * Math.max(0, 1 - padTop - padBottom);
 
-  // Center of the trimmed box
-  const cxTrim = ob.x + ob.width * 0.5;
-  const cyTrim = ob.y + ob.height * padTop + trimmedH * 0.5;
+        const cxTrim = ob.x + ob.width * 0.5;
+        const cyTrim = ob.y + ob.height * padTop + trimmedH * 0.5;
 
-  // Ellipse radii from trimmed box and tuning factors
-  const rx = (ob.width  * (ob.collider.rxFactor || 0.5));
-  const ry = (trimmedH  * (ob.collider.ryFactor || 0.5));
+        const rx = ob.width  * (ob.collider.rxFactor || 0.5);
+        const ry = trimmedH  * (ob.collider.ryFactor || 0.5);
 
-  hit = circleEllipseCollides(ball.x, ball.y, ball.radius, cxTrim, cyTrim, rx, ry);
+        hit = circleEllipseCollides(ball.x, ball.y, ball.radius, cxTrim, cyTrim, rx, ry);
 
       } else {
         // Fallback: slightly shrunken rect
