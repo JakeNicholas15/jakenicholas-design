@@ -34,18 +34,20 @@
   let groundY = height * 0.8;
   const gravity = .8;
   const jumpVelocity = 20;
-  const BASE_SPEED = 7;               // ← base world scroll speed
-    let moveSpeed = BASE_SPEED;         // ← current speed (will ramp)
-    const SPEED_RAMP_DURATION = 120;    // ← seconds to reach max (edit here)
-    const SPEED_MAX_MULT = 5;           // ← 5x max speed (edit here)
-  const SKY_SCROLL_RATIO = 1/3;       // ← sky parallax speed (1/3 of moveSpeed)
-  const spawnChance = 0.22;           // ← your current setting
-  const spawnGapRatio = 0.3;          // ← your current setting
+
+  const BASE_SPEED = 7;               // base world scroll speed
+  let moveSpeed = BASE_SPEED;         // current speed
+  const SPEED_RAMP_DURATION = 120;    // seconds to reach max (not applied below)
+  const SPEED_MAX_MULT = 5;           // 5x max (not applied below)
+
+  const SKY_SCROLL_RATIO = 1/3;       // sky parallax speed (1/3 of moveSpeed)
+  const spawnChance = 0.22;           // your current setting
+  const spawnGapRatio = 0.3;          // your current setting
 
   // ===== HUD / HINT (start text) =====
   const HINT_TEXT = "Press space to jump";
-  const HINT_DURATION_MS = 2500;      // ← show longer (edit here)
-  const HINT_FADE_MS = 600;           // ← fade in/out time (edit here)
+  const HINT_DURATION_MS = 2500;      // show longer (edit here)
+  const HINT_FADE_MS = 600;           // fade in/out time (edit here)
   const hintStart = performance.now();
 
   // ===== HIT FLASH + DELAYED RESET =====
@@ -65,16 +67,20 @@
   ballImg.src = '../../DaniBall.png';
   ballImg.onload = () => { ballLoaded = true; };
 
-  // Obstacles
-  const obstacleSources = [
-    '../../obsticle%201%20coconut.png',
-    '../../obsticle%202%20pickle.png',
-    '../../obsticle%203%20tomato.png'
+  // ===== Obstacles with collider metadata =====
+  const obstacleDefs = [
+    // Circle colliders (coconut, tomato)
+    { src: '../../obsticle%201%20coconut.png', type: 'circle',  radiusFactor: 0.46 },
+    { src: '../../obsticle%203%20tomato.png',  type: 'circle',  radiusFactor: 0.48 },
+
+    // Ellipse collider (pickle): skinny horizontally, tall vertically
+    { src: '../../obsticle%202%20pickle.png',  type: 'ellipse', rxFactor: 0.38, ryFactor: 0.90 }
   ];
-  const obstacleImages = obstacleSources.map(src => {
+  // Load images for each def
+  obstacleDefs.forEach(d => {
     const img = new Image();
-    img.src = src;
-    return img;
+    img.src = d.src;
+    d.img = img;
   });
 
   // Grass (seamless) — scrolls at full speed
@@ -139,25 +145,28 @@
     }
   };
 
-  // Obstacles
+  // Obstacles list + spawner (height-driven sizing)
   const obstacles = [];
   function spawnObstacle() {
-const img = obstacleImages[Math.floor(Math.random() * obstacleImages.length)];
+    const def = obstacleDefs[Math.floor(Math.random() * obstacleDefs.length)];
+    const img = def.img;
 
-// Pick a random height between 100px and 300px
-const minHeight = 100;
-const maxHeight = 350;
-const h = minHeight + Math.random() * (maxHeight - minHeight);
+    // Pick a random height between 100px and 350px (you had 100–350 in your file)
+    const minHeight = 100;
+    const maxHeight = 350;
+    const h = minHeight + Math.random() * (maxHeight - minHeight);
 
-// Keep image aspect ratio
-const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
-const w = h * ratio;
+    // Keep image aspect ratio
+    const ratio = (img.naturalWidth || 1) / (img.naturalHeight || 1);
+    const w = h * ratio;
+
     obstacles.push({
       x: width + Math.random() * width,
       y: groundY - h,
       width: w,
       height: h,
-      img
+      img,
+      collider: def // store collider metadata with the instance
     });
   }
 
@@ -189,7 +198,7 @@ const w = h * ratio;
   });
   window.addEventListener('touchend', () => { jumpPressed = false; });
 
-  // ===== Collision helpers / reset =====
+  // ===== Collision helpers =====
   function circleRectCollides(cx, cy, r, rx, ry, rw, rh) {
     const closestX = Math.max(rx, Math.min(cx, rx + rw));
     const closestY = Math.max(ry, Math.min(cy, ry + rh));
@@ -198,6 +207,22 @@ const w = h * ratio;
     return (dx*dx + dy*dy) <= r*r;
   }
 
+  function circleCircleCollides(bx, by, br, cx, cy, cr) {
+    const dx = bx - cx, dy = by - cy;
+    const rr = br + cr;
+    return (dx*dx + dy*dy) <= rr*rr;
+  }
+
+  // Approximate circle–ellipse by scaling space so ellipse becomes a circle.
+  function circleEllipseCollides(bx, by, br, ex, ey, rx, ry) {
+    if (rx <= 0 || ry <= 0) return false;
+    const dx = (bx - ex) / rx;
+    const dy = (by - ey) / ry;
+    const rEff = br / Math.min(rx, ry); // conservative ball radius in scaled space
+    return (dx*dx + dy*dy) <= (1 + rEff)*(1 + rEff);
+  }
+
+  // Reset logic
   function hardResetGame() {
     scoreSeconds = 0;
     obstacles.length = 0;
@@ -219,15 +244,14 @@ const w = h * ratio;
   }
 
   function update() {
-    // If we're in gameOver delay, freeze world and wait for reset
+    // Freeze during gameOver delay
     if (gameOver) {
-      // after delay, perform hard reset and resume
       if (performance.now() - hitTime >= RESET_DELAY_MS) {
         hardResetGame();
         gameOver = false;
-        lastTs = null; // so score timer restarts cleanly
+        lastTs = null; // restart score timer cleanly
       }
-      return; // skip movement/spawn while flashing & waiting
+      return;
     }
 
     // spawn obstacles with spacing
@@ -271,10 +295,33 @@ const w = h * ratio;
 
     ball.update();
 
-    // detect collision → trigger delayed reset + flash
+    // collider-aware collision detection
     for (let i = 0; i < obstacles.length; i++) {
       const ob = obstacles[i];
-      if (circleRectCollides(ball.x, ball.y, ball.radius, ob.x, ob.y, ob.width, ob.height)) {
+      const cx = ob.x + ob.width  * 0.5; // obstacle center
+      const cy = ob.y + ob.height * 0.5;
+
+      let hit = false;
+      if (ob.collider && ob.collider.type === 'circle') {
+        const cr = Math.min(ob.width, ob.height) * (ob.collider.radiusFactor || 0.5);
+        hit = circleCircleCollides(ball.x, ball.y, ball.radius, cx, cy, cr);
+
+      } else if (ob.collider && ob.collider.type === 'ellipse') {
+        const rx = ob.width  * (ob.collider.rxFactor || 0.5);
+        const ry = ob.height * (ob.collider.ryFactor || 0.5);
+        hit = circleEllipseCollides(ball.x, ball.y, ball.radius, cx, cy, rx, ry);
+
+      } else {
+        // Fallback: slightly shrunken rect
+        const margin = 10;
+        hit = circleRectCollides(
+          ball.x, ball.y, ball.radius,
+          ob.x + margin, ob.y + margin,
+          ob.width - margin*2, ob.height - margin*2
+        );
+      }
+
+      if (hit) {
         triggerGameOver();
         break;
       }
@@ -325,10 +372,8 @@ const w = h * ratio;
     ball.draw();
 
     // --- SCORE (top-center) ---
-    // Edit score SIZE here:
-    ctx.font = 'bold 64px Arial, Helvetica, sans-serif';
-    // Edit score COLOR here:
-    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 64px Arial, Helvetica, sans-serif'; // size
+    ctx.fillStyle = '#ffffff';                             // color
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.lineWidth = 6;
@@ -349,10 +394,8 @@ const w = h * ratio;
       }
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      // Edit hint SIZE here:
-      ctx.font = 'bold 44px Arial, Helvetica, sans-serif';
-      // Edit hint COLOR here:
-      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 44px Arial, Helvetica, sans-serif'; // hint size
+      ctx.fillStyle = '#ffffff';                            // hint color
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.strokeStyle = 'rgba(0,0,0,0.35)';
@@ -366,9 +409,8 @@ const w = h * ratio;
     if (gameOver) {
       const elapsed = now - hitTime;
       if (elapsed < HIT_FLASH_DURATION) {
-        // cosine ease-out for a nice falloff
         const k = elapsed / HIT_FLASH_DURATION;
-        const ease = Math.cos(k * Math.PI) * 0.5 + 0.5; // 1 -> 0 over duration
+        const ease = Math.cos(k * Math.PI) * 0.5 + 0.5; // 1 -> 0
         const alpha = HIT_FLASH_PEAK_ALPHA * ease;
         ctx.save();
         ctx.globalAlpha = Math.max(0, Math.min(HIT_FLASH_PEAK_ALPHA, alpha));
