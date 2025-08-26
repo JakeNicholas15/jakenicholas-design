@@ -1,1 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ditch Dani</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* Ditch hitbox (percent of viewport). Press "D" to toggle debug box. */
+    /* These values fit the provided ditch.jpg reasonably well as a starting point. */
+    --ditch-left: 52%;
+    --ditch-top:  68%;
+    --ditch-w:    56%;
+    --ditch-h:    28%;
 
+    /* Sprite animation frames (4 frames @ 600x700 laid horizontally) */
+    --frames: 4;
+    --drag-fps: 10;             /* kicking speed while dragging */
+
+    /* Fall animation */
+    --fall-rotate-deg: 18deg;
+    --fall-duration:   900ms;
+
+    /* Starting position for Dani (desktop defaults), overridden on mobile in CSS below */
+    --start-left: 70vw;
+    --start-top:  56vh;
+  }
+
+  *{ box-sizing:border-box; }
+  html, body{
+    margin:0; height:100%; overflow:hidden; background:#000;
+    font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  }
+
+  /* Full-screen background image of the ditch */
+  .stage{
+    position:fixed; inset:0;
+    background: #000 center / cover no-repeat url("./ditch.jpg");
+    /* Nudge the crop slightly so the ditch is nicely framed on desktop */
+    background-position: 55% 60%;
+  }
+
+  /* Dani (draggable) */
+  .dani{
+    position:absolute;
+    /* Keep Dani small so there’s room to drag around; scales with viewport */
+    width: clamp(90px, 16vw, 220px);
+    aspect-ratio: 600 / 700;     /* match your frame size ratio */
+    user-select:none; -webkit-user-drag:none;
+    touch-action:none;           /* we handle touch dragging */
+    cursor:grab;
+    will-change: transform, top, left;
+    left: var(--start-left);
+    top:  var(--start-top);
+    transform: translateZ(0);
+  }
+  .dani:active{ cursor:grabbing; }
+
+  /* Idle still image (sets intrinsic look) */
+  .idle{
+    position:absolute; inset:0;
+    width:100%; height:100%; object-fit:contain;
+    pointer-events:none;
+    transition: opacity .12s linear;
+  }
+
+  /* Sprite-sheet overlay. Frames laid horizontally; fill the same box. */
+  .sprite{
+    position:absolute; inset:0;
+    pointer-events:none;
+    opacity:0;
+    background-image: url("./dani_drag_sprites.png");
+    background-repeat: no-repeat;
+    background-size: calc(100% * var(--frames)) 100%;
+    background-position: 0 0;
+    image-rendering: -webkit-optimize-contrast;
+  }
+
+  /* When dragging: show sprite + play steps() animation, hide idle */
+  .dani.is-dragging .idle{ opacity:0; }
+  .dani.is-dragging .sprite{
+    opacity:1;
+    animation: play-frames calc(1s * (12 / var(--drag-fps))) steps(var(--frames)) infinite;
+  }
+  @keyframes play-frames{ to { background-position: 100% 0; } }
+
+  /* Speech bubble */
+  .bubble{
+    position:absolute;
+    max-width: 56vw;
+    background:#fff; color:#111;
+    border-radius:18px; padding:10px 14px;
+    font-size: clamp(14px, 2.6vw, 20px);
+    line-height:1.25;
+    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
+    opacity:0; transform: translateY(6px);
+    transition: opacity .22s ease, transform .22s ease;
+    pointer-events:none;
+  }
+  .bubble::after{
+    content:""; position:absolute; left:12px; bottom:-10px;
+    border:10px solid transparent; border-top-color:#fff;
+  }
+  .bubble.is-visible{ opacity:1; transform: translateY(0); }
+
+  /* Ditch hitbox (invisible; 'D' toggles debug) */
+  .ditch-zone{
+    position:absolute;
+    left: var(--ditch-left); top: var(--ditch-top);
+    width: var(--ditch-w); height: var(--ditch-h);
+    transform: translate(-50%, -50%);
+    pointer-events:none;
+  }
+  .ditch-zone.debug{
+    outline: 2px dashed rgba(255,255,255,0.75);
+    background: rgba(0,0,0,0.08);
+    outline-offset:2px;
+  }
+
+  /* Fall animation */
+  .falling{
+    animation: fall var(--fall-duration) cubic-bezier(.2,.85,.35,1) forwards;
+  }
+  @keyframes fall{
+    from{ transform: translate3d(var(--fall-start-x,0), var(--fall-start-y,0), 0) rotate(0deg); }
+    to  { transform: translate3d(var(--fall-end-x,0),   var(--fall-end-y,0),   0) rotate(var(--fall-rotate-deg)); }
+  }
+
+  /* Back button (matches your site) */
+  #backBtn{
+    position: fixed; left:16px; bottom:16px;
+    width:56px; height:56px; display:flex; align-items:center; justify-content:center;
+    font-size:32px; border-radius:999px; color:#fff; text-decoration:none; cursor:pointer;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(12px) saturate(1.2);
+    -webkit-backdrop-filter: blur(12px) saturate(1.2);
+    z-index:9999; transition: transform .15s ease, background .2s ease;
+  }
+  #backBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.22); }
+
+  /* Optional desktop reset button (hidden on phones) */
+  .reset{
+    position:fixed; right:16px; bottom:16px;
+    font-size:14px; padding:8px 12px; border-radius:12px;
+    color:#111; background:#fff; border:0; cursor:pointer;
+    box-shadow:0 4px 16px rgba(0,0,0,.25);
+  }
+  @media (max-width: 640px){ .reset{ display:none; } }
+
+  /* Mobile tweaks: tighter crop so ditch is centered, smaller Dani start pos */
+  @media (max-width: 680px){
+    .stage{ background-position: 60% 68%; }  /* push view slightly right/down */
+    :root{
+      --start-left: 66vw;
+      --start-top:  58vh;
+    }
+    .dani{ width: clamp(84px, 22vw, 160px); } /* a bit smaller on phones */
+  }
+</style>
+</head>
+<body>
+  <div class="stage" aria-hidden="true"></div>
+  <div class="ditch-zone" id="ditchZone"></div>
+
+  <!-- Dani (initial position set by CSS vars above) -->
+  <div class="dani" id="dani">
+    <img class="idle" src="./dani_idle.png" alt="Dani, draggable">
+    <div class="sprite" aria-hidden="true"></div>
+  </div>
+
+  <div class="bubble" id="bubble">Dang I’m Ditched</div>
+
+  <a id="backBtn" href="../../" aria-label="Back to gallery">←</a>
+  <button class="reset" id="resetBtn" title="Reset Dani">Reset</button>
+
+<script>
+(() => {
+  const dani   = document.getElementById('dani');
+  const bubble = document.getElementById('bubble');
+  const ditch  = document.getElementById('ditchZone');
+  const reset  = document.getElementById('resetBtn');
+
+  const isCoarse = matchMedia('(pointer:coarse)').matches;
+  const HOLD_DELAY_MS = isCoarse ? 140 : 0;   // tap & hold on mobile; immediate on desktop
+  const MOVE_TOLERANCE = 8;
+
+  // Keep initial position for Reset
+  const start = () => ({ left: dani.offsetLeft, top: dani.offsetTop });
+  let startPos = start();
+
+  let dragging = false, ditched = false;
+  let offsetX = 0, offsetY = 0;
+  let activePointerId = null;
+  let holdTimer = null;
+  let downPos = { x:0, y:0 };
+
+  dani.addEventListener('dragstart', e => e.preventDefault());
+
+  dani.addEventListener('pointerdown', onPointerDown);
+  window.addEventListener('pointermove', onPointerMove, { passive:false });
+  window.addEventListener('pointerup', onPointerUp);
+  window.addEventListener('pointercancel', onPointerUp);
+
+  function onPointerDown(e){
+    if(ditched) return;
+    activePointerId = e.pointerId;
+    dani.setPointerCapture(activePointerId);
+
+    const rect = dani.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+    downPos = { x:e.clientX, y:e.clientY };
+
+    bubble.classList.remove('is-visible');
+
+    if(HOLD_DELAY_MS){
+      holdTimer = setTimeout(startDrag, HOLD_DELAY_MS);
+    }else{
+      startDrag();
+    }
+  }
+
+  function startDrag(){
+    if(dragging) return;
+    dragging = true;
+    dani.classList.add('is-dragging');
+    startPos = start();  // refresh in case of resize
+  }
+
+  function onPointerMove(e){
+    if(e.pointerId !== activePointerId) return;
+
+    // If waiting for hold but finger moved a bit, start anyway
+    if(!dragging && holdTimer){
+      const dx = Math.abs(e.clientX - downPos.x);
+      const dy = Math.abs(e.clientY - downPos.y);
+      if(dx > MOVE_TOLERANCE || dy > MOVE_TOLERANCE){
+        clearTimeout(holdTimer); holdTimer = null;
+        startDrag();
+      }
+    }
+
+    if(!dragging) return;
+    e.preventDefault();
+
+    const x = e.clientX - offsetX;
+    const y = e.clientY - offsetY;
+    const maxX = window.innerWidth  - dani.offsetWidth;
+    const maxY = window.innerHeight - dani.offsetHeight;
+
+    dani.style.left = clamp(x, 0, maxX) + 'px';
+    dani.style.top  = clamp(y, 0, maxY) + 'px';
+  }
+
+  function onPointerUp(e){
+    if(e.pointerId !== activePointerId) return;
+    if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+
+    if(dragging){
+      dragging = false;
+      dani.classList.remove('is-dragging');
+
+      const collided = intersects(dani.getBoundingClientRect(), ditch.getBoundingClientRect());
+      if(collided){ triggerFall(); }
+    }
+
+    dani.releasePointerCapture(activePointerId);
+    activePointerId = null;
+  }
+
+  function triggerFall(){
+    if(ditched) return;
+    ditched = true;
+
+    const daniRect  = dani.getBoundingClientRect();
+    const ditchRect = ditch.getBoundingClientRect();
+
+    const endX = (ditchRect.left + ditchRect.width/2) - (daniRect.left + daniRect.width/2);
+    const endY = (ditchRect.top + ditchRect.height)   - (daniRect.top + daniRect.height/2);
+
+    dani.style.setProperty('--fall-start-x', '0px');
+    dani.style.setProperty('--fall-start-y', '0px');
+    dani.style.setProperty('--fall-end-x', endX + 'px');
+    dani.style.setProperty('--fall-end-y', endY + 'px');
+
+    dani.classList.add('falling');
+
+    dani.addEventListener('animationend', () => {
+      positionBubbleNearDani();
+      bubble.classList.add('is-visible');
+    }, { once:true });
+  }
+
+  function positionBubbleNearDani(){
+    const r = dani.getBoundingClientRect();
+    let bx = r.left + 12;
+    let by = r.top  - 44;
+
+    const pad = 8;
+    const maxX = window.innerWidth  - 180; // rough width fallback
+    const maxY = window.innerHeight - 48;
+
+    bx = clamp(bx, pad, maxX);
+    by = clamp(by, pad, maxY);
+
+    bubble.style.left = bx + 'px';
+    bubble.style.top  = by + 'px';
+  }
+
+  function intersects(a, b){
+    return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+  }
+  function clamp(v, min, max){ return Math.max(min, Math.min(max, v)); }
+
+  // Reset (for testing)
+  reset.addEventListener('click', () => {
+    ditched = false;
+    dani.classList.remove('falling');
+    bubble.classList.remove('is-visible');
+
+    dani.style.left = startPos.left + 'px';
+    dani.style.top  = startPos.top  + 'px';
+    dani.style.removeProperty('--fall-start-x');
+    dani.style.removeProperty('--fall-start-y');
+    dani.style.removeProperty('--fall-end-x');
+    dani.style.removeProperty('--fall-end-y');
+  });
+
+  // Debug toggle to visualize the ditch hitbox
+  let debugOn = false;
+  window.addEventListener('keydown', (e) => {
+    if(e.key.toLowerCase() === 'd'){
+      debugOn = !debugOn;
+      ditch.classList.toggle('debug', debugOn);
+    }
+  });
+
+  // Keep bubble aligned if viewport changes
+  window.addEventListener('resize', () => {
+    if(bubble.classList.contains('is-visible')) positionBubbleNearDani();
+  });
+})();
+</script>
+</body>
+</html>
