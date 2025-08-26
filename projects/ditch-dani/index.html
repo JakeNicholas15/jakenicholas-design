@@ -7,14 +7,14 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ditch Dani</title>
-<!-- v: ditch-dani-006 -->
+<!-- v: ditch-dani-007 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 
-<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=6">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=6">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.png?v=6">
+<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=7">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=7">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.png?v=7">
 
 <style>
   :root{
@@ -31,7 +31,7 @@
     --g: 1800;
     --slide-speed: 520;
 
-    --frames: 4; /* 600x700 each */
+    --frames: 4; /* we’ll divide the sheet into 4 frames in JS */
   }
 
   *{ box-sizing:border-box; }
@@ -42,7 +42,7 @@
 
   .stage{
     position:fixed; inset:0;
-    background: #000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=6");
+    background: #000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=7");
     background-position: 55% 60%;
   }
 
@@ -56,7 +56,7 @@
     left: var(--start-left);
     top:  var(--start-top);
     width: clamp(90px, 16vw, 220px);
-    aspect-ratio: 600 / 700;
+    aspect-ratio: 600 / 700;  /* desired portrait box */
     user-select:none; -webkit-user-drag:none;
     touch-action:none;
     cursor:grab;
@@ -65,7 +65,7 @@
   }
   .dani:active{ cursor:grabbing; }
 
-  /* Idle still */
+  /* idle still */
   .idle{
     position:absolute; inset:0;
     width:100%; height:100%; object-fit:contain;
@@ -73,32 +73,19 @@
     transition: opacity .12s linear;
   }
 
-  /* New robust sprite approach: crop box + sliding strip image */
-  .animLayer{
+  /* canvas anim layer */
+  .animCanvas{
     position:absolute; inset:0;
-    overflow:hidden;             /* crops to one frame */
-    opacity:0;                   /* hidden until animating */
-    pointer-events:none;
-  }
-  .sheet{
-    width: 400%;                 /* 4 frames horizontally */
-    height: 100%;
+    width:100%; height:100%;
     display:block;
-    will-change: transform;
-    image-rendering: -webkit-optimize-contrast;
+    pointer-events:none;
+    opacity:0;
   }
 
-  /* While animating, hide idle and animate strip with steps(4) */
   .animating .idle{ opacity:0; }
-  .animating .animLayer{ opacity:1; }
-  .animating .sheet{
-    animation: kick 0.25s steps(4) infinite; /* ~16 fps */
-  }
-  @keyframes kick{
-    to { transform: translateX(-75%); } /* 0%, -25%, -50%, -75% */
-  }
+  .animating .animCanvas{ opacity:1; }
 
-  /* Speech bubble */
+  /* bubble */
   .bubble{
     position:absolute;
     max-width: 56vw;
@@ -115,6 +102,7 @@
     border:10px solid transparent; border-top-color:#fff; }
   .bubble.is-visible{ opacity:1; transform: translateY(0); }
 
+  /* back btn */
   #backBtn{
     position: fixed; left:16px; bottom:16px;
     width:56px; height:56px; display:flex; align-items:center; justify-content:center;
@@ -126,6 +114,7 @@
   }
   #backBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.22); }
 
+  /* mobile tweaks */
   @media (max-width: 680px){
     .stage{ background-position: 60% 68%; }
     :root{
@@ -141,15 +130,15 @@
 <body>
   <div class="stage" aria-hidden="true"></div>
 
+  <!-- debug boxes -->
   <div id="ditchBox"  class="hitbox ditch-box"></div>
   <div id="slopeLeft" class="hitbox slope-box"></div>
   <div id="slopeRight"class="hitbox slope-box"></div>
 
+  <!-- Dani -->
   <div id="dani" class="dani">
-    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=6" alt="Dani">
-    <div class="animLayer" aria-hidden="true">
-      <img class="sheet" src="/projects/ditch-dani/dani_drag_sprites.png?v=6" alt="">
-    </div>
+    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=7" alt="Dani">
+    <canvas id="animCanvas" class="animCanvas" aria-hidden="true"></canvas>
   </div>
 
   <div id="bubble" class="bubble">Dang I’m Ditched</div>
@@ -163,6 +152,63 @@
   const ditchBox = document.getElementById('ditchBox');
   const slopeLeft = document.getElementById('slopeLeft');
   const slopeRight = document.getElementById('slopeRight');
+
+  /* ---------- canvas sprite renderer ---------- */
+  const canvas = document.getElementById('animCanvas');
+  const ctx = canvas.getContext('2d', { alpha: true });
+
+  const sheet = new Image();
+  sheet.src = '/projects/ditch-dani/dani_drag_sprites.png?v=7';
+
+  const FRAMES = 4;
+  const FPS = 16;                // looks good for 4 frames
+  const FRAME_TIME = 1000 / FPS;
+  let frameIndex = 0;
+  let animReq = null;
+  let lastTick = 0;
+
+  function sizeCanvas(){
+    const dpr = Math.max(1, devicePixelRatio || 1);
+    const r = dani.getBoundingClientRect();
+    canvas.width  = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scale drawings to CSS pixels
+  }
+  sizeCanvas();
+  addEventListener('resize', sizeCanvas);
+
+  function drawFrame(){
+    if (!sheet.complete || !sheet.naturalWidth) return;
+    // Divide sprite sheet into 4 equal columns (works even if there’s gutter)
+    const sw = sheet.naturalWidth / FRAMES; // source frame width in px
+    const sh = sheet.naturalHeight;
+    const sx = Math.floor(frameIndex % FRAMES) * sw;
+
+    // Clear then draw current frame scaled to canvas size
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.drawImage(sheet, sx, 0, sw, sh, 0, 0, canvas.width, canvas.height);
+  }
+
+  function startSprite(){
+    if (animReq) return;
+    lastTick = performance.now();
+    const step = (now) => {
+      if (now - lastTick >= FRAME_TIME){
+        frameIndex = (frameIndex + 1) % FRAMES;
+        drawFrame();
+        lastTick = now;
+      }
+      animReq = requestAnimationFrame(step);
+    };
+    // draw first frame immediately
+    drawFrame();
+    animReq = requestAnimationFrame(step);
+    dani.classList.add('animating');
+  }
+  function stopSprite(){
+    if (animReq){ cancelAnimationFrame(animReq); animReq = null; }
+    dani.classList.remove('animating');
+  }
 
   /* ---------- helpers ---------- */
   const cssNum = (prop) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(prop));
@@ -204,7 +250,7 @@
   const centerOf = (el)=>{ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height,rect:r}; };
   function placeCenter(el, cx, cy){ const w=el.offsetWidth,h=el.offsetHeight; el.style.left=Math.round(cx-w/2)+'px'; el.style.top=Math.round(cy-h/2)+'px'; }
 
-  /* ---------- drag ---------- */
+  /* ---------- drag + physics ---------- */
   let dragging=false, activeId=null, offsetX=0, offsetY=0, downPos={x:0,y:0}, holdTimer=null;
   const isCoarse = matchMedia('(pointer:coarse)').matches;
   const HOLD_DELAY = isCoarse ? 140 : 0;
@@ -219,16 +265,16 @@
     offsetX = e.clientX - r.left;
     offsetY = e.clientY - r.top;
     downPos = {x:e.clientX, y:e.clientY};
-    bubble.classList.remove('is-visible'); // hide bubble on new drag
-    if(HOLD_DELAY){ holdTimer = setTimeout(startDrag, HOLD_DELAY); }
-    else{ startDrag(); }
+    bubble.classList.remove('is-visible');
+    if(HOLD_DELAY){ holdTimer = setTimeout(beginDrag, HOLD_DELAY); }
+    else { beginDrag(); }
   });
 
   addEventListener('pointermove', (e)=>{
     if(e.pointerId!==activeId) return;
     if(!dragging && holdTimer){
       const dx=Math.abs(e.clientX-downPos.x), dy=Math.abs(e.clientY-downPos.y);
-      if(dx>MOVE_TOL||dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
+      if(dx>MOVE_TOL||dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; beginDrag(); }
     }
     if(!dragging) return;
     e.preventDefault();
@@ -238,6 +284,7 @@
     const maxY = innerHeight - dani.offsetHeight;
     dani.style.left = clamp(x,0,maxX)+'px';
     dani.style.top  = clamp(y,0,maxY)+'px';
+    sizeCanvas(); // keep canvas in sync if CSS size changes (e.g., zoom)
   }, {passive:false});
 
   addEventListener('pointerup', (e)=>{
@@ -246,7 +293,6 @@
 
     if(dragging){
       dragging=false;
-
       const zones = computeZones();
       const r = dani.getBoundingClientRect();
       const inDitch = intersects(r, rectToDOMRect(zones.ditch));
@@ -255,13 +301,13 @@
 
       if(inDitch){
         fallTo(zones.ditch.x + zones.ditch.w/2, zones.ditch.y + zones.ditch.h, () => {
-          positionBubble(); bubble.classList.add('is-visible');
+          stopSprite(); positionBubble(); bubble.classList.add('is-visible');
         });
       }else if(inSlopeL||inSlopeR){
-        slideToCenter(zones, () => { positionBubble(); bubble.classList.add('is-visible'); });
+        slideToCenter(zones, () => { stopSprite(); positionBubble(); bubble.classList.add('is-visible'); });
       }else{
         const c=centerOf(dani);
-        fallTo(c.x, zones.groundY, () => setAnimating(false));
+        fallTo(c.x, zones.groundY, () => stopSprite());
       }
     }
 
@@ -269,29 +315,19 @@
     activeId=null;
   });
 
-  function startDrag(){
+  function beginDrag(){
     if(dragging) return;
     dragging=true;
-    setAnimating(true);
-  }
-
-  function setAnimating(on){
-    dani.classList.toggle('animating', !!on);
-    if(!on){
-      // force animation style reset for Safari
-      const sheet = dani.querySelector('.sheet');
-      sheet.style.animation = 'none';
-      // next frame to allow it to be restarted later
-      requestAnimationFrame(()=>{ sheet.style.animation=''; });
-    }
+    sizeCanvas();
+    startSprite();
   }
 
   /* ---------- motion ---------- */
+  const cssNum = (prop) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(prop));
+
   function fallTo(targetX, targetY, onDone){
     const start = centerOf(dani);
     const g = cssNum('--g');
-
-    setAnimating(true);
 
     const dx = targetX - start.x;
     const dy = targetY - start.y;
@@ -301,7 +337,7 @@
     let vy = 0;
 
     let last = performance.now();
-    function step(now){
+    const step = (now)=>{
       const dt = (now - last)/1000; last = now;
       vy += g * dt;
 
@@ -309,23 +345,20 @@
       let cx = r.left + r.width/2 + vx * dt;
       let cy = r.top  + r.height/2 + vy * dt;
 
-      if ( (dy >= 0 && cy >= targetY) || (dy < 0 && cy <= targetY) ){
+      if ((dy >= 0 && cy >= targetY) || (dy < 0 && cy <= targetY)){
         placeCenter(dani, targetX, targetY);
-        setAnimating(false);
         onDone && onDone();
         return;
       }
       placeCenter(dani, cx, cy);
-      requestAnimationFrame(step);
-    }
-    requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
+      animReqFall = requestAnimationFrame(step);
+    };
+    let animReqFall = requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
   }
 
   function slideToCenter(zones, onDone){
     const start = centerOf(dani);
     const target = { x: zones.ditch.x + zones.ditch.w/2, y: zones.ditch.y + zones.ditch.h };
-
-    setAnimating(true);
 
     const dx = target.x - start.x;
     const dy = target.y - start.y;
@@ -334,21 +367,13 @@
     const duration = Math.max(0.2, dist / speed) * 1000;
 
     const t0 = performance.now();
-    function step(now){
+    const step = (now)=>{
       const t = clamp((now - t0)/duration, 0, 1);
-      const e = easeOutQuad(t);
-      const cx = start.x + dx * e;
-      const cy = start.y + dy * e;
-
-      placeCenter(dani, cx, cy);
-
-      if (t >= 1){
-        setAnimating(false);
-        onDone && onDone();
-        return;
-      }
-      requestAnimationFrame(step);
-    }
+      const e = 1 - (1-t)*(1-t); // easeOutQuad
+      placeCenter(dani, start.x + dx * e, start.y + dy * e);
+      if (t >= 1){ onDone && onDone(); }
+      else requestAnimationFrame(step);
+    };
     requestAnimationFrame(step);
   }
 
@@ -366,7 +391,7 @@
     bubble.style.top  = by + 'px';
   }
 
-  /* ---------- debug + resize ---------- */
+  /* ---------- debug ---------- */
   let debug = false;
   addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'd'){
@@ -375,7 +400,6 @@
       [ditchBox, slopeLeft, slopeRight].forEach(el => el.classList.toggle('debug', debug));
     }
   });
-  addEventListener('resize', () => { if (debug) computeZones(); });
 
   computeZones();
 })();
