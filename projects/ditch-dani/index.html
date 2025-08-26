@@ -7,17 +7,19 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ditch Dani</title>
-<!-- v: ditch-dani-007 -->
+<!-- v: ditch-dani-008 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 
-<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=7">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=7">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.png?v=7">
+<!-- Preload assets -->
+<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=8">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=8">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.gif?v=8">
 
 <style>
   :root{
+    /* Tune to your photo (press “D” to show hitboxes) */
     --ditch-left: 52%;
     --ditch-top:  68%;
     --ditch-w:    56%;
@@ -25,98 +27,88 @@
     --slope-band: 10%;
     --ground-y:   60%;
 
+    /* Spawn on right bank */
     --start-left: 72vw;
     --start-top:  48vh;
 
-    --g: 1800;
-    --slide-speed: 520;
-
-    --frames: 4; /* we’ll divide the sheet into 4 frames in JS */
+    /* Physics */
+    --g: 1800;           /* gravity px/s^2 */
+    --slide-speed: 520;  /* px/s sliding into center */
   }
 
-  *{ box-sizing:border-box; }
+  *{ box-sizing: border-box; }
   html, body{
     margin:0; height:100%; overflow:hidden; background:#000;
     font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   }
 
+  /* Background */
   .stage{
     position:fixed; inset:0;
-    background: #000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=7");
-    background-position: 55% 60%;
+    background:#000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=8");
+    background-position:55% 60%;
   }
 
+  /* Debug overlays (toggle with "D") */
   .hitbox{ position:absolute; pointer-events:none; display:none; }
   .hitbox.debug{ display:block; }
   .ditch-box{ outline:2px dashed rgba(255,255,255,.85); outline-offset:2px; }
-  .slope-box{ outline:2px dashed rgba(255,200,0,.8); }
+  .slope-box{ outline:2px dashed rgba(255,200,0,.85); }
 
+  /* Dani container receives all pointer events */
   .dani{
     position:absolute;
     left: var(--start-left);
     top:  var(--start-top);
     width: clamp(90px, 16vw, 220px);
-    aspect-ratio: 600 / 700;  /* desired portrait box */
+    aspect-ratio: 600 / 700;      /* your PNG/GIF aspect */
     user-select:none; -webkit-user-drag:none;
-    touch-action:none;
+    touch-action:none;            /* we handle dragging */
     cursor:grab;
     transform: translateZ(0);
     will-change: left, top, transform;
   }
   .dani:active{ cursor:grabbing; }
 
-  /* idle still */
-  .idle{
-    position:absolute; inset:0;
-    width:100%; height:100%; object-fit:contain;
-    pointer-events:none;
-    transition: opacity .12s linear;
-  }
+  /* Layers inside Dani never steal the pointer */
+  .dani img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
 
-  /* canvas anim layer */
-  .animCanvas{
-    position:absolute; inset:0;
-    width:100%; height:100%;
-    display:block;
-    pointer-events:none;
-    opacity:0;
-  }
-
+  /* Idle still visible by default; GIF hidden until animating */
+  .idle{ opacity:1; transition:opacity .12s linear; }
+  .gif { opacity:0; transition:opacity .12s linear; }
   .animating .idle{ opacity:0; }
-  .animating .animCanvas{ opacity:1; }
+  .animating .gif { opacity:1; }
 
-  /* bubble */
+  /* Speech bubble (shows only when she ends up in the ditch center) */
   .bubble{
     position:absolute;
-    max-width: 56vw;
-    background:#fff; color:#111;
+    max-width:56vw; background:#fff; color:#111;
     border-radius:18px; padding:10px 14px;
-    font-size: clamp(14px, 2.6vw, 20px);
-    line-height:1.25;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
-    opacity:0; transform: translateY(6px);
-    transition: opacity .22s ease, transform .22s ease;
+    font-size:clamp(14px,2.6vw,20px); line-height:1.25;
+    box-shadow:0 8px 28px rgba(0,0,0,.25);
+    opacity:0; transform:translateY(6px);
+    transition:opacity .22s ease, transform .22s ease;
     pointer-events:none;
   }
   .bubble::after{ content:""; position:absolute; left:12px; bottom:-10px;
     border:10px solid transparent; border-top-color:#fff; }
-  .bubble.is-visible{ opacity:1; transform: translateY(0); }
+  .bubble.is-visible{ opacity:1; transform:translateY(0); }
 
-  /* back btn */
+  /* Back button (matches your site) */
   #backBtn{
-    position: fixed; left:16px; bottom:16px;
+    position:fixed; left:16px; bottom:16px; z-index:9999;
     width:56px; height:56px; display:flex; align-items:center; justify-content:center;
     font-size:32px; border-radius:999px; color:#fff; text-decoration:none; cursor:pointer;
-    background: rgba(255,255,255,0.15);
+    background:rgba(255,255,255,0.15);
     backdrop-filter: blur(12px) saturate(1.2);
     -webkit-backdrop-filter: blur(12px) saturate(1.2);
-    z-index:9999; transition: transform .15s ease, background .2s ease;
+    transition: transform .15s ease, background .2s ease;
   }
-  #backBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.22); }
+  #backBtn:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.22); }
 
-  /* mobile tweaks */
+  /* Mobile tweaks */
   @media (max-width: 680px){
-    .stage{ background-position: 60% 68%; }
+    .stage{ background-position:60% 68%; }
     :root{
       --start-left: 68vw;
       --start-top:  46vh;
@@ -130,15 +122,15 @@
 <body>
   <div class="stage" aria-hidden="true"></div>
 
-  <!-- debug boxes -->
+  <!-- Debug hitboxes -->
   <div id="ditchBox"  class="hitbox ditch-box"></div>
   <div id="slopeLeft" class="hitbox slope-box"></div>
   <div id="slopeRight"class="hitbox slope-box"></div>
 
-  <!-- Dani -->
+  <!-- Dani (idle still + animated GIF) -->
   <div id="dani" class="dani">
-    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=7" alt="Dani">
-    <canvas id="animCanvas" class="animCanvas" aria-hidden="true"></canvas>
+    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=8" alt="Dani">
+    <img class="gif"  src="/projects/ditch-dani/dani_drag_sprites.gif?v=8" alt="" aria-hidden="true">
   </div>
 
   <div id="bubble" class="bubble">Dang I’m Ditched</div>
@@ -153,71 +145,13 @@
   const slopeLeft = document.getElementById('slopeLeft');
   const slopeRight = document.getElementById('slopeRight');
 
-  /* ---------- canvas sprite renderer ---------- */
-  const canvas = document.getElementById('animCanvas');
-  const ctx = canvas.getContext('2d', { alpha: true });
-
-  const sheet = new Image();
-  sheet.src = '/projects/ditch-dani/dani_drag_sprites.png?v=7';
-
-  const FRAMES = 4;
-  const FPS = 16;                // looks good for 4 frames
-  const FRAME_TIME = 1000 / FPS;
-  let frameIndex = 0;
-  let animReq = null;
-  let lastTick = 0;
-
-  function sizeCanvas(){
-    const dpr = Math.max(1, devicePixelRatio || 1);
-    const r = dani.getBoundingClientRect();
-    canvas.width  = Math.round(r.width * dpr);
-    canvas.height = Math.round(r.height * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // scale drawings to CSS pixels
-  }
-  sizeCanvas();
-  addEventListener('resize', sizeCanvas);
-
-  function drawFrame(){
-    if (!sheet.complete || !sheet.naturalWidth) return;
-    // Divide sprite sheet into 4 equal columns (works even if there’s gutter)
-    const sw = sheet.naturalWidth / FRAMES; // source frame width in px
-    const sh = sheet.naturalHeight;
-    const sx = Math.floor(frameIndex % FRAMES) * sw;
-
-    // Clear then draw current frame scaled to canvas size
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.drawImage(sheet, sx, 0, sw, sh, 0, 0, canvas.width, canvas.height);
-  }
-
-  function startSprite(){
-    if (animReq) return;
-    lastTick = performance.now();
-    const step = (now) => {
-      if (now - lastTick >= FRAME_TIME){
-        frameIndex = (frameIndex + 1) % FRAMES;
-        drawFrame();
-        lastTick = now;
-      }
-      animReq = requestAnimationFrame(step);
-    };
-    // draw first frame immediately
-    drawFrame();
-    animReq = requestAnimationFrame(step);
-    dani.classList.add('animating');
-  }
-  function stopSprite(){
-    if (animReq){ cancelAnimationFrame(animReq); animReq = null; }
-    dani.classList.remove('animating');
-  }
-
-  /* ---------- helpers ---------- */
-  const cssNum = (prop) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(prop));
+  /* ------------ helpers ------------ */
+  const cssNum = (p)=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue(p));
   const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
   const easeOutQuad = (t)=>1-(1-t)*(1-t);
 
   function computeZones(){
     const vw = innerWidth, vh = innerHeight;
-
     const leftPct = cssNum('--ditch-left')/100;
     const topPct  = cssNum('--ditch-top')/100;
     const wPct    = cssNum('--ditch-w')/100;
@@ -230,7 +164,7 @@
       w: vw*wPct,
       h: vh*hPct
     };
-    const band = ditch.w * bandPct;
+    const band = ditch.w*bandPct;
     const slopeL = { x: ditch.x - band, y: ditch.y, w: band, h: ditch.h };
     const slopeR = { x: ditch.x + ditch.w, y: ditch.y, w: band, h: ditch.h };
 
@@ -238,25 +172,25 @@
     placeBox(slopeLeft, slopeL);
     placeBox(slopeRight, slopeR);
 
-    const groundY = vh * (cssNum('--ground-y')/100);
+    const groundY = vh*(cssNum('--ground-y')/100);
     return { ditch, slopeL, slopeR, groundY };
   }
   function placeBox(el, r){
-    el.style.left = r.x+'px'; el.style.top = r.y+'px';
-    el.style.width = r.w+'px'; el.style.height = r.h+'px';
+    el.style.left=r.x+'px'; el.style.top=r.y+'px';
+    el.style.width=r.w+'px'; el.style.height=r.h+'px';
   }
   const rectToDOMRect = (r)=>({left:r.x, top:r.y, right:r.x+r.w, bottom:r.y+r.h});
   const intersects = (a,b)=>!(a.right<b.left||a.left>b.right||a.bottom<b.top||a.top>b.bottom);
-  const centerOf = (el)=>{ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height,rect:r}; };
+  const centerOf = (el)=>{ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2, w:r.width, h:r.height, rect:r}; };
   function placeCenter(el, cx, cy){ const w=el.offsetWidth,h=el.offsetHeight; el.style.left=Math.round(cx-w/2)+'px'; el.style.top=Math.round(cy-h/2)+'px'; }
 
-  /* ---------- drag + physics ---------- */
+  /* ------------ drag + physics ------------ */
   let dragging=false, activeId=null, offsetX=0, offsetY=0, downPos={x:0,y:0}, holdTimer=null;
   const isCoarse = matchMedia('(pointer:coarse)').matches;
-  const HOLD_DELAY = isCoarse ? 140 : 0;
+  const HOLD_DELAY = isCoarse ? 140 : 0; // tap&hold on phones
   const MOVE_TOL = 8;
 
-  dani.addEventListener('dragstart', e=>e.preventDefault());
+  dani.addEventListener('dragstart', e=>e.preventDefault()); // prevent native drag ghost
 
   dani.addEventListener('pointerdown', (e)=>{
     activeId = e.pointerId;
@@ -266,15 +200,15 @@
     offsetY = e.clientY - r.top;
     downPos = {x:e.clientX, y:e.clientY};
     bubble.classList.remove('is-visible');
-    if(HOLD_DELAY){ holdTimer = setTimeout(beginDrag, HOLD_DELAY); }
-    else { beginDrag(); }
+    if(HOLD_DELAY){ holdTimer = setTimeout(startDrag, HOLD_DELAY); }
+    else { startDrag(); }
   });
 
   addEventListener('pointermove', (e)=>{
-    if(e.pointerId!==activeId) return;
+    if(e.pointerId !== activeId) return;
     if(!dragging && holdTimer){
       const dx=Math.abs(e.clientX-downPos.x), dy=Math.abs(e.clientY-downPos.y);
-      if(dx>MOVE_TOL||dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; beginDrag(); }
+      if(dx>MOVE_TOL || dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
     }
     if(!dragging) return;
     e.preventDefault();
@@ -284,51 +218,60 @@
     const maxY = innerHeight - dani.offsetHeight;
     dani.style.left = clamp(x,0,maxX)+'px';
     dani.style.top  = clamp(y,0,maxY)+'px';
-    sizeCanvas(); // keep canvas in sync if CSS size changes (e.g., zoom)
   }, {passive:false});
 
   addEventListener('pointerup', (e)=>{
-    if(e.pointerId!==activeId) return;
+    if(e.pointerId !== activeId) return;
     if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; }
 
     if(dragging){
       dragging=false;
+
       const zones = computeZones();
       const r = dani.getBoundingClientRect();
-      const inDitch = intersects(r, rectToDOMRect(zones.ditch));
-      const inSlopeL= intersects(r, rectToDOMRect(zones.slopeL));
-      const inSlopeR= intersects(r, rectToDOMRect(zones.slopeR));
+      const inDitch  = intersects(r, rectToDOMRect(zones.ditch));
+      const inSlopeL = intersects(r, rectToDOMRect(zones.slopeL));
+      const inSlopeR = intersects(r, rectToDOMRect(zones.slopeR));
 
       if(inDitch){
+        // Fall straight to center-bottom; then show bubble
         fallTo(zones.ditch.x + zones.ditch.w/2, zones.ditch.y + zones.ditch.h, () => {
-          stopSprite(); positionBubble(); bubble.classList.add('is-visible');
+          setAnimating(false); positionBubble(); bubble.classList.add('is-visible');
         });
-      }else if(inSlopeL||inSlopeR){
-        slideToCenter(zones, () => { stopSprite(); positionBubble(); bubble.classList.add('is-visible'); });
+      }else if(inSlopeL || inSlopeR){
+        // Slide into center; then bubble
+        slideToCenter(zones, () => { setAnimating(false); positionBubble(); bubble.classList.add('is-visible'); });
       }else{
+        // Fall to flat ground under current x; stop
         const c=centerOf(dani);
-        fallTo(c.x, zones.groundY, () => stopSprite());
+        fallTo(c.x, zones.groundY, () => setAnimating(false));
       }
     }
 
     dani.releasePointerCapture(activeId);
-    activeId=null;
+    activeId = null;
   });
 
-  function beginDrag(){
+  function startDrag(){
     if(dragging) return;
-    dragging=true;
-    sizeCanvas();
-    startSprite();
+    dragging = true;
+    setAnimating(true);
   }
 
-  /* ---------- motion ---------- */
-  const cssNum = (prop) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(prop));
+  function setAnimating(on){
+    dani.classList.toggle('animating', !!on);
+    if(!on){
+      // reset GIF to first frame so idle looks consistent
+      const gif = dani.querySelector('.gif');
+      const src = gif.getAttribute('src');
+      gif.setAttribute('src', src.split('?')[0] + '?t=' + Date.now());
+    }
+  }
 
+  /* ------------ motion ------------ */
   function fallTo(targetX, targetY, onDone){
     const start = centerOf(dani);
     const g = cssNum('--g');
-
     const dx = targetX - start.x;
     const dy = targetY - start.y;
 
@@ -337,13 +280,13 @@
     let vy = 0;
 
     let last = performance.now();
-    const step = (now)=>{
+    function step(now){
       const dt = (now - last)/1000; last = now;
       vy += g * dt;
 
       const r = dani.getBoundingClientRect();
-      let cx = r.left + r.width/2 + vx * dt;
-      let cy = r.top  + r.height/2 + vy * dt;
+      const cx = r.left + r.width/2 + vx * dt;
+      const cy = r.top  + r.height/2 + vy * dt;
 
       if ((dy >= 0 && cy >= targetY) || (dy < 0 && cy <= targetY)){
         placeCenter(dani, targetX, targetY);
@@ -351,9 +294,9 @@
         return;
       }
       placeCenter(dani, cx, cy);
-      animReqFall = requestAnimationFrame(step);
-    };
-    let animReqFall = requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
   }
 
   function slideToCenter(zones, onDone){
@@ -367,17 +310,17 @@
     const duration = Math.max(0.2, dist / speed) * 1000;
 
     const t0 = performance.now();
-    const step = (now)=>{
+    function step(now){
       const t = clamp((now - t0)/duration, 0, 1);
-      const e = 1 - (1-t)*(1-t); // easeOutQuad
-      placeCenter(dani, start.x + dx * e, start.y + dy * e);
-      if (t >= 1){ onDone && onDone(); }
+      const e = easeOutQuad(t);
+      placeCenter(dani, start.x + dx*e, start.y + dy*e);
+      if(t >= 1){ onDone && onDone(); }
       else requestAnimationFrame(step);
-    };
+    }
     requestAnimationFrame(step);
   }
 
-  /* ---------- bubble ---------- */
+  /* ------------ bubble ------------ */
   function positionBubble(){
     const r = dani.getBoundingClientRect();
     let bx = r.left + 12;
@@ -391,13 +334,13 @@
     bubble.style.top  = by + 'px';
   }
 
-  /* ---------- debug ---------- */
-  let debug = false;
-  addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'd'){
+  /* ------------ debug ------------ */
+  let debug=false;
+  addEventListener('keydown', (e)=>{
+    if(e.key.toLowerCase()==='d'){
       debug = !debug;
       const z = computeZones();
-      [ditchBox, slopeLeft, slopeRight].forEach(el => el.classList.toggle('debug', debug));
+      [ditchBox, slopeLeft, slopeRight].forEach(el=>el.classList.toggle('debug', debug));
     }
   });
 
