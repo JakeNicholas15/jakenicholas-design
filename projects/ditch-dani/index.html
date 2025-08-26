@@ -32,13 +32,26 @@
     --slope-right-x: 94%;
     --slope-right-y: 48%;
 
-    /* Spawn (magenta box area) */
-    --start-left: 84vw;
-    --start-top:  35vh;
+  --dani-w: clamp(90px, 16vw, 220px);        /* same as .dani width on desktop */
+  --start-left: 84vw;
+  --start-top:  35vh;
+}
+
+/* Dani */
+.dani{
+  width: var(--dani-w);
+  aspect-ratio: 600 / 700;
+  left: calc(var(--start-left) - (var(--dani-w) * 0.5 * 700 / 600));
+  top:  calc(var(--start-top)  - (var(--dani-w) * 0.5 * 700 / 600));
+}
+
+/* In your mobile media query, override --dani-w to match the phone width */
+@media (max-width: 680px){
+  :root{ --dani-w: clamp(84px, 22vw, 160px); }
 
     /* Motion */
-    --g: 1800;          /* drop gravity px/s^2 */
-    --slide-speed: 520; /* sliding speed px/s */
+    --g: 1500;          /* drop gravity px/s^2 */
+    --slide-speed: 320; /* sliding speed px/s */
   }
 
   *{ box-sizing:border-box; }
