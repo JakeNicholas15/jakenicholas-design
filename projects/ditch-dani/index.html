@@ -7,51 +7,44 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ditch Dani</title>
-<!-- v: ditch-dani-010 -->
+<!-- v: ditch-dani-011 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 
 <!-- Preload -->
-<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=10">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=10">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.gif?v=10">
-<link rel="preload" as="image" href="/projects/ditch-dani/DangImDitched.png?v=10">
+<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=11">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=11">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.gif?v=11">
+<link rel="preload" as="image" href="/projects/ditch-dani/DangImDitched.png?v=11">
 
 <style>
   :root{
-    /* Ditch geometry (percent of viewport) */
+    /* ---- Ditch geometry (percent of viewport) ---- */
     --ditch-left: 52%;
     --ditch-top:  68%;
     --ditch-w:    56%;
     --ditch-h:    28%;
 
-    /* Slope line endpoints (match your green lines) */
+    /* Two slope lines (toward bottom center) */
     --slope-left-x:   7%;
     --slope-left-y:  42%;
     --slope-right-x: 94%;
     --slope-right-y: 48%;
 
-  --dani-w: clamp(90px, 16vw, 220px);        /* same as .dani width on desktop */
-  --start-left: 84vw;
-  --start-top:  35vh;
-}
+    /* Dani size (match .dani width) */
+    --dani-w: clamp(90px, 16vw, 220px);
 
-/* Dani */
-.dani{
-  width: var(--dani-w);
-  aspect-ratio: 600 / 700;
-  left: calc(var(--start-left) - (var(--dani-w) * 0.5 * 700 / 600));
-  top:  calc(var(--start-top)  - (var(--dani-w) * 0.5 * 700 / 600));
-}
+    /* Move spawn 50% of Dani's height up+left (height = width * 700/600) */
+    --half-h: calc(0.5 * var(--dani-w) * 700 / 600);
 
-/* In your mobile media query, override --dani-w to match the phone width */
-@media (max-width: 680px){
-  :root{ --dani-w: clamp(84px, 22vw, 160px); }
+    /* Base spawn (original 84vw,35vh) minus half height on both axes */
+    --start-left: calc(84vw - var(--half-h));
+    --start-top:  calc(35vh - var(--half-h));
 
     /* Motion */
-    --g: 1500;          /* drop gravity px/s^2 */
-    --slide-speed: 320; /* sliding speed px/s */
+    --g: 1800;          /* gravity px/s^2 */
+    --slide-speed: 520; /* px/s */
   }
 
   *{ box-sizing:border-box; }
@@ -63,43 +56,43 @@
   /* Background */
   .stage{
     position:fixed; inset:0; z-index:0;
-    background:#000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=10");
+    background:#000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=11");
     background-position:55% 60%;
   }
 
-  /* Dani (draggable container) */
+  /* Dani (draggable) */
   .dani{
     position:absolute; z-index:2;
     left: var(--start-left);
     top:  var(--start-top);
-    width: clamp(90px, 16vw, 220px);
+    width: var(--dani-w);
     aspect-ratio: 600 / 700;
     user-select:none; -webkit-user-drag:none;
-    touch-action:none;            /* allow drag on touch */
+    touch-action:none;            /* we handle drag */
     cursor:grab;
     transform:translateZ(0);
     will-change:left,top,transform;
   }
   .dani:active{ cursor:grabbing; }
 
-  /* Layers inside never intercept pointer */
+  /* Layers inside Dani never intercept the pointer */
   .dani img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
 
-  /* Idle vs animated gif */
+  /* Idle vs animated GIF */
   .idle{ opacity:1; transition:opacity .12s linear; }
   .gif { opacity:0; transition:opacity .12s linear; }
   .animating .idle{ opacity:0; }
   .animating .gif { opacity:1; }
 
-  /* Bubble PNG (positioned absolutely over page; JS places it) */
+  /* Bubble PNG (never blocks input) */
   #bubbleImg{
-    position:absolute; z-index:3; display:none;
-    pointer-events:none;           /* never blocks drag */
+    position:absolute; z-index:3;
+    pointer-events:none;
     filter: drop-shadow(0 8px 18px rgba(0,0,0,.25));
-    transition: opacity .22s ease, transform .22s ease;
-    opacity:0; transform: translateY(6px);
+    opacity:0; visibility:hidden; transform: translateY(6px);
+    transition: opacity .22s ease, transform .22s ease, visibility .22s step-end;
   }
-  #bubbleImg.is-visible{ display:block; opacity:1; transform: translateY(0); }
+  #bubbleImg.is-visible{ opacity:1; visibility:visible; transform: translateY(0); }
 
   /* Back button */
   #backBtn{
@@ -117,15 +110,17 @@
   .debugLayer{ position:fixed; inset:0; pointer-events:none; z-index:1; display:none; }
   .debugLayer.on{ display:block; }
 
+  /* Mobile */
   @media (max-width: 680px){
     .stage{ background-position:60% 68%; }
     :root{
-      --start-left: 70vw;
-      --start-top:  38vh;
+      --dani-w: clamp(84px, 22vw, 160px);
+      --half-h: calc(0.5 * var(--dani-w) * 700 / 600);
+      --start-left: calc(70vw - var(--half-h)); /* slight mobile spawn tweak */
+      --start-top:  calc(38vh - var(--half-h));
       --g: 1500;
       --slide-speed: 460;
     }
-    .dani{ width: clamp(84px, 22vw, 160px); }
   }
 </style>
 </head>
@@ -134,12 +129,12 @@
 
   <!-- Dani -->
   <div id="dani" class="dani">
-    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=10" alt="Dani">
-    <img class="gif"  src="/projects/ditch-dani/dani_drag_sprites.gif?v=10" alt="" aria-hidden="true">
+    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=11" alt="Dani">
+    <img class="gif"  src="/projects/ditch-dani/dani_drag_sprites.gif?v=11" alt="" aria-hidden="true">
   </div>
 
-  <!-- Bubble PNG (shown after slide completes) -->
-  <img id="bubbleImg" src="/projects/ditch-dani/DangImDitched.png?v=10" alt="Dang I'm Ditched">
+  <!-- Bubble PNG -->
+  <img id="bubbleImg" src="/projects/ditch-dani/DangImDitched.png?v=11" alt="Dang I'm Ditched">
 
   <!-- Back -->
   <a id="backBtn" href="../../" aria-label="Back to gallery">←</a>
@@ -175,7 +170,7 @@
   function centerOf(el){ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2, rect:r}; }
   function placeCenter(el, cx, cy){ const w=el.offsetWidth,h=el.offsetHeight; el.style.left=Math.round(cx-w/2)+'px'; el.style.top=Math.round(cy-h/2)+'px'; }
 
-  // y-value along left/right slope at a given x
+  // y-value along chosen slope at x
   function yOnSlopeAtX(x, leftSide){
     const c = { x: px.centerX(), y: px.bottomY() };
     const s = leftSide ? px.slopeL() : px.slopeR();
@@ -183,8 +178,8 @@
     return c.y + t*(s.y - c.y);
   }
 
-  // slide along chosen slope to center-bottom
-  function slideToCenter(leftSide, fromX, fromY, onDone){
+  // slide along slope to center-bottom
+  function slideToCenter(fromX, fromY, onDone){
     const target = { x: px.centerX(), y: px.bottomY() };
     const dx = target.x - fromX;
     const dy = target.y - fromY;
@@ -203,7 +198,7 @@
     requestAnimationFrame(step);
   }
 
-  // gravity drop vertically to yTarget (keeping x velocity so we can bias to center a bit)
+  // gravity drop vertically to yTarget (bias x to target a bit so fall looks natural)
   function fallTo(xTarget, yTarget, onDone){
     const start = centerOf(dani);
     const g = cssNum('--g');
@@ -239,7 +234,7 @@
   function setAnimating(on){
     dani.classList.toggle('animating', !!on);
     if(!on){
-      // reset GIF to first frame so next drag starts from frame 1
+      // reset GIF so next drag starts from frame 1
       const gif = dani.querySelector('.gif');
       const base = gif.getAttribute('src').split('?')[0];
       gif.setAttribute('src', base + '?t=' + Date.now());
@@ -250,19 +245,22 @@
   function showBubble(){
     const r = dani.getBoundingClientRect();
     const desiredW = clamp(r.width * 1.6, 220, 520);  // scale with Dani, but clamp
-    bubbleImg.style.width = Math.round(desiredW) + 'px';
+    const ar = (bubbleImg.naturalWidth && bubbleImg.naturalHeight)
+      ? bubbleImg.naturalWidth / bubbleImg.naturalHeight
+      : 1.6; // fallback
+    const desiredH = desiredW / ar;
 
-    // after width applies, measure its height using natural ratio (approx before image load is fine)
-    const bx = r.left + r.width/2 - (desiredW/2);
-    const by = r.top - (desiredW * 0.6) - 12; // ~0.6 aspect guess puts it nicely above head
+    const bx = r.left + (r.width - desiredW)/2;
+    const by = r.top - desiredH - 12;
     const pad = 6;
 
-    bubbleImg.style.left = Math.round(clamp(bx, pad, innerWidth - desiredW - pad)) + 'px';
-    bubbleImg.style.top  = Math.round(Math.max(pad, by)) + 'px';
+    bubbleImg.style.width = Math.round(desiredW) + 'px';
+    bubbleImg.style.left  = Math.round(clamp(bx, pad, innerWidth - desiredW - pad)) + 'px';
+    bubbleImg.style.top   = Math.round(Math.max(pad, by)) + 'px';
 
     bubbleImg.classList.add('is-visible');
   }
-  function hideBubble(){ bubbleImg.classList.remove('is-visible'); bubbleImg.style.display='none'; requestAnimationFrame(()=>{ bubbleImg.style.display=''; }); }
+  function hideBubble(){ bubbleImg.classList.remove('is-visible'); }
 
   /* ---------- drag handling ---------- */
   let dragging=false, activeId=null, offsetX=0, offsetY=0, downPos={x:0,y:0}, holdTimer=null;
@@ -270,7 +268,7 @@
   const HOLD_DELAY = isCoarse ? 140 : 0;  // tap & hold on phones
   const MOVE_TOL = 8;
 
-  dani.addEventListener('dragstart', e=>e.preventDefault()); // disable native ghost drag
+  dani.addEventListener('dragstart', e=>e.preventDefault()); // disable native image drag
 
   dani.addEventListener('pointerdown', (e)=>{
     activeId = e.pointerId;
@@ -285,10 +283,10 @@
   });
 
   addEventListener('pointermove', (e)=>{
-    if(e.pointerId !== activeId) return;
+    if(e.pointerId!==activeId) return;
     if(!dragging && holdTimer){
       const dx=Math.abs(e.clientX-downPos.x), dy=Math.abs(e.clientY-downPos.y);
-      if(dx>MOVE_TOL || dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
+      if(dx>MOVE_TOL||dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
     }
     if(!dragging) return;
     e.preventDefault();
@@ -301,46 +299,42 @@
   }, {passive:false});
 
   addEventListener('pointerup', (e)=>{
-    if(e.pointerId !== activeId) return;
+    if(e.pointerId!==activeId) return;
     if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; }
 
     if(dragging){
       dragging=false;
 
-      const cX = px.centerX();
-      const cY = px.bottomY();
-      const c  = centerOf(dani);
-
-      const useLeft = c.x <= cX;
-      const yOnLine = yOnSlopeAtX(c.x, useLeft);
+      const c = centerOf(dani);
+      const centerX = px.centerX();
+      const yLine   = yOnSlopeAtX(c.x, c.x <= centerX);
 
       const startSlide = () => {
-        const from = centerOf(dani);
-        slideToCenter(useLeft, from.x, Math.max(from.y, yOnLine), () => {
+        const nowC = centerOf(dani);
+        slideToCenter(nowC.x, Math.max(nowC.y, yLine), () => {
           setAnimating(false);
           showBubble();
         });
       };
 
-      // If above the slope line, fall to it first
-      if (c.y < yOnLine - 1){
-        fallTo(c.x, yOnLine, startSlide);
+      if (c.y < yLine - 1){
+        fallTo(c.x, yLine, startSlide);
       } else {
         startSlide();
       }
     }
 
     dani.releasePointerCapture(activeId);
-    activeId = null;
+    activeId=null;
   });
 
   function startDrag(){
     if(dragging) return;
-    dragging = true;
+    dragging=true;
     setAnimating(true);
   }
 
-  /* ---------- debug overlay ---------- */
+  /* ---------- debug overlay (press D) ---------- */
   function syncDebug(){
     const cx = cssNum('--ditch-left');
     const cy = cssNum('--ditch-top') + cssNum('--ditch-h')/2;
@@ -367,7 +361,6 @@
       syncDebug();
     }
   });
-
   addEventListener('resize', syncDebug);
 })();
 </script>
