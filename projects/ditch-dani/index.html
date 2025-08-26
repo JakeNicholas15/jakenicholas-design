@@ -7,10 +7,16 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ditch Dani</title>
-<!-- v: ditch-dani-004 -->
+<!-- v: ditch-dani-005 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
+<!-- Preload assets so they definitely fetch -->
+<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=5">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=5">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.png?v=5">
+
 <style>
   :root{
     /* Tune to your photo (press “D” to see hitboxes) */
@@ -18,8 +24,8 @@
     --ditch-top:  68%;
     --ditch-w:    56%;
     --ditch-h:    28%;
-    --slope-band: 10%;   /* % of ditch width on both left/right that counts as slope */
-    --ground-y:   60%;   /* flat ground Y as % of viewport height */
+    --slope-band: 10%;
+    --ground-y:   60%;
 
     /* Spawn on right bank */
     --start-left: 72vw;
@@ -42,7 +48,7 @@
   /* Background */
   .stage{
     position:fixed; inset:0;
-    background: #000 center/cover no-repeat url("./ditch.jpg?v=4");
+    background: #000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=5");
     background-position: 55% 60%;
   }
 
@@ -58,9 +64,9 @@
     left: var(--start-left);
     top:  var(--start-top);
     width: clamp(90px, 16vw, 220px);
-    aspect-ratio: 600 / 700;  /* match your frame ratio */
+    aspect-ratio: 600 / 700;
     user-select:none; -webkit-user-drag:none;
-    touch-action:none;         /* we handle drag */
+    touch-action:none;
     cursor:grab;
     transform: translateZ(0);
     will-change: left, top, transform;
@@ -77,11 +83,11 @@
     position:absolute; inset:0;
     pointer-events:none;
     opacity:0;
-    background-image:url("./dani_drag_sprites.png?v=4");
+    background-image:url("/projects/ditch-dani/dani_drag_sprites.png?v=5");
     background-repeat:no-repeat;
     background-size:400% 100%;   /* exactly 4 frames wide */
     background-position:0 0;
-    image-rendering: -webkit-optimize-contrast;
+    image-rendering:-webkit-optimize-contrast;
   }
 
   /* Animate while dragging/falling/sliding */
@@ -92,7 +98,7 @@
   }
   @keyframes play-frames{ to { background-position:100% 0; } }
 
-  /* Speech bubble (appears only when she ends up in ditch center) */
+  /* Speech bubble (appears when she ends in ditch center) */
   .bubble{
     position:absolute;
     max-width: 56vw;
@@ -105,10 +111,8 @@
     transition: opacity .22s ease, transform .22s ease;
     pointer-events:none;
   }
-  .bubble::after{
-    content:""; position:absolute; left:12px; bottom:-10px;
-    border:10px solid transparent; border-top-color:#fff;
-  }
+  .bubble::after{ content:""; position:absolute; left:12px; bottom:-10px;
+    border:10px solid transparent; border-top-color:#fff; }
   .bubble.is-visible{ opacity:1; transform: translateY(0); }
 
   /* Back button */
@@ -125,7 +129,7 @@
 
   /* Mobile tweaks */
   @media (max-width: 680px){
-    .stage{ background-position: 60% 68%; } /* nudge crop */
+    .stage{ background-position: 60% 68%; }
     :root{
       --start-left: 68vw;
       --start-top:  46vh;
@@ -146,7 +150,7 @@
 
   <!-- Dani -->
   <div id="dani" class="dani">
-    <img class="idle" src="./dani_idle.png?v=4" alt="Dani">
+    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=5" alt="Dani">
     <div class="sprite" aria-hidden="true"></div>
   </div>
 
@@ -283,13 +287,11 @@
 
   function setAnimating(on){
     dani.classList.toggle('animating', !!on);
-    // Ensure Safari doesn’t cache animation when turning off
-    if(!on){ dani.querySelector('.sprite').style.animation = ''; }
+    if(!on){ dani.querySelector('.sprite').style.animation = ''; } // Safari reset
   }
 
   /* ---------- motion ---------- */
 
-  // Physics fall to (targetX, targetY) using rAF + gravity
   function fallTo(targetX, targetY, onDone){
     const start = centerOf(dani);
     const g = cssNum('--g'); // px/s^2
@@ -299,10 +301,9 @@
     const dx = targetX - start.x;
     const dy = targetY - start.y;
 
-    // time to fall from rest: dy = 0.5 * g * t^2  =>  t = sqrt(2*max(dy, 1)/g)
     const tFall = Math.sqrt(Math.max(2 * Math.max(dy, 1) / g, 0.0001));
-    const vx = dx / tFall; // constant horizontal velocity to meet the x target at the same time
-    let vy = 0;            // vertical starts at 0, accelerates with gravity
+    const vx = dx / tFall; // horizontal velocity to meet x at landing
+    let vy = 0;
 
     let last = performance.now();
     function step(now){
@@ -315,7 +316,6 @@
       let cx = r.left + r.width/2 + vx * dt;
       let cy = r.top  + r.height/2 + vy * dt;
 
-      // Stop when crossing targetY (handles both up/down cases)
       if ( (dy >= 0 && cy >= targetY) || (dy < 0 && cy <= targetY) ){
         placeCenter(dani, targetX, targetY);
         setAnimating(false);
@@ -329,7 +329,6 @@
     requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
   }
 
-  // Slide from current position to ditch center along a line (eased)
   function slideToCenter(zones, onDone){
     const start = centerOf(dani);
     const target = { x: zones.ditch.x + zones.ditch.w/2, y: zones.ditch.y + zones.ditch.h };
@@ -384,13 +383,9 @@
       [ditchBox, slopeLeft, slopeRight].forEach(el => el.classList.toggle('debug', debug));
     }
   });
+  addEventListener('resize', () => { if (debug) computeZones(); });
 
-  addEventListener('resize', () => {
-    if (debug) computeZones();
-  });
-
-  // Initial compute so debug boxes have positions when toggled
-  computeZones();
+  computeZones(); // set positions for debug boxes if toggled
 })();
 </script>
 </body>
