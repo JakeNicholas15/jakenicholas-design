@@ -7,95 +7,90 @@
 <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Ditch Dani</title>
-<!-- v: ditch-dani-009 -->
+<!-- v: ditch-dani-010 -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
 
-<!-- Preload images -->
-<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=9">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=9">
-<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.gif?v=9">
+<!-- Preload -->
+<link rel="preload" as="image" href="/projects/ditch-dani/ditch.jpg?v=10">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_idle.png?v=10">
+<link rel="preload" as="image" href="/projects/ditch-dani/dani_drag_sprites.gif?v=10">
+<link rel="preload" as="image" href="/projects/ditch-dani/DangImDitched.png?v=10">
 
 <style>
   :root{
-    /* ---- Ditch geometry (percent of viewport) ----
-       These control the two slope lines and the landing point. */
-    /* Landing point = bottom center of ditch */
-    --ditch-left: 52%;   /* horizontal center of ditch bowl */
-    --ditch-top:  68%;   /* vertical center of the bowl rect */
+    /* Ditch geometry (percent of viewport) */
+    --ditch-left: 52%;
+    --ditch-top:  68%;
     --ditch-w:    56%;
     --ditch-h:    28%;
 
-    /* Slope line endpoints (the two green lines in your mockup) */
+    /* Slope line endpoints (match your green lines) */
     --slope-left-x:   7%;
     --slope-left-y:  42%;
     --slope-right-x: 94%;
     --slope-right-y: 48%;
 
-    /* Spawn Dani higher/right (magenta box vibe) */
+    /* Spawn (magenta box area) */
     --start-left: 84vw;
     --start-top:  35vh;
 
-    /* Motion tuning */
-    --g: 1800;          /* gravity px/s^2 for the vertical drop */
-    --slide-speed: 520; /* px/s along the slope */
+    /* Motion */
+    --g: 1800;          /* drop gravity px/s^2 */
+    --slide-speed: 520; /* sliding speed px/s */
   }
 
   *{ box-sizing:border-box; }
   html, body{
     margin:0; height:100%; overflow:hidden; background:#000;
-    font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
   }
 
-  /* Full-screen background */
+  /* Background */
   .stage{
-    position:fixed; inset:0;
-    background:#000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=9");
+    position:fixed; inset:0; z-index:0;
+    background:#000 center/cover no-repeat url("/projects/ditch-dani/ditch.jpg?v=10");
     background-position:55% 60%;
   }
 
-  /* Dani container (draggable) */
+  /* Dani (draggable container) */
   .dani{
-    position:absolute;
+    position:absolute; z-index:2;
     left: var(--start-left);
     top:  var(--start-top);
     width: clamp(90px, 16vw, 220px);
     aspect-ratio: 600 / 700;
     user-select:none; -webkit-user-drag:none;
-    touch-action:none;
+    touch-action:none;            /* allow drag on touch */
     cursor:grab;
-    transform: translateZ(0);
-    will-change: left, top, transform;
+    transform:translateZ(0);
+    will-change:left,top,transform;
   }
   .dani:active{ cursor:grabbing; }
 
-  /* Inner layers never steal pointer events */
+  /* Layers inside never intercept pointer */
   .dani img{ position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; }
 
-  /* Idle vs animated (GIF) */
+  /* Idle vs animated gif */
   .idle{ opacity:1; transition:opacity .12s linear; }
   .gif { opacity:0; transition:opacity .12s linear; }
   .animating .idle{ opacity:0; }
   .animating .gif { opacity:1; }
 
-  /* Speech bubble */
-  .bubble{
-    position:absolute; max-width:56vw; background:#fff; color:#111;
-    border-radius:18px; padding:10px 14px;
-    font-size:clamp(14px,2.6vw,20px); line-height:1.25;
-    box-shadow:0 8px 28px rgba(0,0,0,.25);
-    opacity:0; transform:translateY(6px);
-    transition:opacity .22s ease, transform .22s ease;
-    pointer-events:none;
+  /* Bubble PNG (positioned absolutely over page; JS places it) */
+  #bubbleImg{
+    position:absolute; z-index:3; display:none;
+    pointer-events:none;           /* never blocks drag */
+    filter: drop-shadow(0 8px 18px rgba(0,0,0,.25));
+    transition: opacity .22s ease, transform .22s ease;
+    opacity:0; transform: translateY(6px);
   }
-  .bubble::after{ content:""; position:absolute; left:12px; bottom:-10px;
-    border:10px solid transparent; border-top-color:#fff; }
-  .bubble.is-visible{ opacity:1; transform:translateY(0); }
+  #bubbleImg.is-visible{ display:block; opacity:1; transform: translateY(0); }
 
   /* Back button */
   #backBtn{
-    position:fixed; left:16px; bottom:16px; z-index:9999;
+    position:fixed; left:16px; bottom:16px; z-index:5;
     width:56px; height:56px; display:flex; align-items:center; justify-content:center;
     font-size:32px; border-radius:999px; color:#fff; text-decoration:none; cursor:pointer;
     background:rgba(255,255,255,0.15);
@@ -105,8 +100,8 @@
   }
   #backBtn:hover{ transform:translateY(-1px); background:rgba(255,255,255,0.22); }
 
-  /* Debug overlay (press D) */
-  .debugLayer{ position:fixed; inset:0; pointer-events:none; display:none; }
+  /* Debug overlay (press D) — cannot block clicks */
+  .debugLayer{ position:fixed; inset:0; pointer-events:none; z-index:1; display:none; }
   .debugLayer.on{ display:block; }
 
   @media (max-width: 680px){
@@ -126,17 +121,17 @@
 
   <!-- Dani -->
   <div id="dani" class="dani">
-    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=9" alt="Dani">
-    <img class="gif"  src="/projects/ditch-dani/dani_drag_sprites.gif?v=9" alt="" aria-hidden="true">
+    <img class="idle" src="/projects/ditch-dani/dani_idle.png?v=10" alt="Dani">
+    <img class="gif"  src="/projects/ditch-dani/dani_drag_sprites.gif?v=10" alt="" aria-hidden="true">
   </div>
 
-  <!-- Bubble -->
-  <div id="bubble" class="bubble">Dang I’m Ditched</div>
+  <!-- Bubble PNG (shown after slide completes) -->
+  <img id="bubbleImg" src="/projects/ditch-dani/DangImDitched.png?v=10" alt="Dang I'm Ditched">
 
   <!-- Back -->
   <a id="backBtn" href="../../" aria-label="Back to gallery">←</a>
 
-  <!-- Debug SVG overlay (press D) -->
+  <!-- Debug lines/landing (press D) -->
   <svg id="debug" class="debugLayer" viewBox="0 0 100 100" preserveAspectRatio="none">
     <line id="lineL" x1="50" y1="82" x2="7"  y2="42" stroke="#00ff88" stroke-width="1.2"/>
     <line id="lineR" x1="50" y1="82" x2="94" y2="48" stroke="#00ff88" stroke-width="1.2"/>
@@ -146,56 +141,56 @@
 <script>
 (() => {
   const dani = document.getElementById('dani');
-  const bubble = document.getElementById('bubble');
+  const bubbleImg = document.getElementById('bubbleImg');
   const debugSVG = document.getElementById('debug');
 
-  /* ---------- utilities ---------- */
+  /* ---------- helpers ---------- */
   const cssNum = (p)=>parseFloat(getComputedStyle(document.documentElement).getPropertyValue(p));
   const clamp  = (v,a,b)=>Math.max(a,Math.min(b,v));
   const easeOutQuad=(t)=>1-(1-t)*(1-t);
 
-  // viewport->pixels for our CSS % vars
+  // ditch geometry in pixels
   const px = {
-    ditchCenterX(){ return innerWidth  * (cssNum('--ditch-left')/100); },
-    ditchBottomY(){ return innerHeight * (cssNum('--ditch-top')/100 + cssNum('--ditch-h')/100/2); },
-    slopeLeft(){  return { x: innerWidth*(cssNum('--slope-left-x')/100),
-                           y: innerHeight*(cssNum('--slope-left-y')/100) }; },
-    slopeRight(){ return { x: innerWidth*(cssNum('--slope-right-x')/100),
-                           y: innerHeight*(cssNum('--slope-right-y')/100) }; }
+    centerX(){ return innerWidth  * (cssNum('--ditch-left')/100); },
+    bottomY(){ return innerHeight * (cssNum('--ditch-top')/100 + cssNum('--ditch-h')/100/2); },
+    slopeL(){  return { x: innerWidth*(cssNum('--slope-left-x')/100),
+                        y: innerHeight*(cssNum('--slope-left-y')/100) }; },
+    slopeR(){  return { x: innerWidth*(cssNum('--slope-right-x')/100),
+                        y: innerHeight*(cssNum('--slope-right-y')/100) }; }
   };
 
   function centerOf(el){ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2, y:r.top+r.height/2, rect:r}; }
   function placeCenter(el, cx, cy){ const w=el.offsetWidth,h=el.offsetHeight; el.style.left=Math.round(cx-w/2)+'px'; el.style.top=Math.round(cy-h/2)+'px'; }
 
-  // Given a line through p0(=center) -> p1 (left or right endpoint), return y at given x
-  function yOnSlopeAtX(x, isLeft){
-    const c = { x: px.ditchCenterX(), y: px.ditchBottomY() };
-    const s = isLeft ? px.slopeLeft() : px.slopeRight();
-    const t = (x - c.x) / (s.x - c.x);        // param along the line
-    return c.y + t * (s.y - c.y);
+  // y-value along left/right slope at a given x
+  function yOnSlopeAtX(x, leftSide){
+    const c = { x: px.centerX(), y: px.bottomY() };
+    const s = leftSide ? px.slopeL() : px.slopeR();
+    const t = (x - c.x) / (s.x - c.x);
+    return c.y + t*(s.y - c.y);
   }
 
-  // Slide along the chosen slope from current point to center
-  function slideToCenterAlongSlope(isLeft, fromX, fromY, onDone){
-    const c  = { x: px.ditchCenterX(), y: px.ditchBottomY() };
-    const dx = c.x - fromX;
-    const dy = c.y - fromY;
+  // slide along chosen slope to center-bottom
+  function slideToCenter(leftSide, fromX, fromY, onDone){
+    const target = { x: px.centerX(), y: px.bottomY() };
+    const dx = target.x - fromX;
+    const dy = target.y - fromY;
     const dist = Math.hypot(dx, dy);
-    const speed = cssNum('--slide-speed'); // px/s
+    const speed = cssNum('--slide-speed');
     const dur = Math.max(0.2, dist / speed) * 1000;
-
     const t0 = performance.now();
-    function step(now){
+
+    const step = (now)=>{
       const t = clamp((now - t0)/dur, 0, 1);
       const e = easeOutQuad(t);
       placeCenter(dani, fromX + dx*e, fromY + dy*e);
       if(t >= 1){ onDone && onDone(); }
       else requestAnimationFrame(step);
-    }
+    };
     requestAnimationFrame(step);
   }
 
-  // Physics drop to (x, yTarget)
+  // gravity drop vertically to yTarget (keeping x velocity so we can bias to center a bit)
   function fallTo(xTarget, yTarget, onDone){
     const start = centerOf(dani);
     const g = cssNum('--g');
@@ -207,7 +202,7 @@
     let vy = 0;
 
     let last = performance.now();
-    function step(now){
+    const step = (now)=>{
       const dt = (now - last)/1000; last = now;
       vy += g * dt;
 
@@ -215,7 +210,7 @@
       const cx = r.left + r.width/2 + vx * dt;
       const cy = r.top  + r.height/2 + vy * dt;
 
-      const done = (dy >= 0) ? (cy >= yTarget) : (cy <= yTarget);
+      const done = dy >= 0 ? (cy >= yTarget) : (cy <= yTarget);
       if(done){
         placeCenter(dani, xTarget, yTarget);
         onDone && onDone();
@@ -223,41 +218,46 @@
       }
       placeCenter(dani, cx, cy);
       requestAnimationFrame(step);
-    }
+    };
     requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
   }
 
-  // Start/stop the animated GIF layer
+  // animation state (gif vs idle)
   function setAnimating(on){
     dani.classList.toggle('animating', !!on);
     if(!on){
-      // reset GIF so next drag starts from frame 1
+      // reset GIF to first frame so next drag starts from frame 1
       const gif = dani.querySelector('.gif');
       const base = gif.getAttribute('src').split('?')[0];
       gif.setAttribute('src', base + '?t=' + Date.now());
     }
   }
 
-  // Bubble placement
+  // place bubble PNG above Dani and reveal
   function showBubble(){
     const r = dani.getBoundingClientRect();
-    const pad = 8;
-    let bx = r.left + 12;
-    let by = r.top  - 44;
-    bx = clamp(bx, pad, innerWidth-180);
-    by = clamp(by, pad, innerHeight-48);
-    bubble.style.left = bx+'px';
-    bubble.style.top  = by+'px';
-    bubble.classList.add('is-visible');
-  }
+    const desiredW = clamp(r.width * 1.6, 220, 520);  // scale with Dani, but clamp
+    bubbleImg.style.width = Math.round(desiredW) + 'px';
 
-  /* ---------- Drag handling ---------- */
+    // after width applies, measure its height using natural ratio (approx before image load is fine)
+    const bx = r.left + r.width/2 - (desiredW/2);
+    const by = r.top - (desiredW * 0.6) - 12; // ~0.6 aspect guess puts it nicely above head
+    const pad = 6;
+
+    bubbleImg.style.left = Math.round(clamp(bx, pad, innerWidth - desiredW - pad)) + 'px';
+    bubbleImg.style.top  = Math.round(Math.max(pad, by)) + 'px';
+
+    bubbleImg.classList.add('is-visible');
+  }
+  function hideBubble(){ bubbleImg.classList.remove('is-visible'); bubbleImg.style.display='none'; requestAnimationFrame(()=>{ bubbleImg.style.display=''; }); }
+
+  /* ---------- drag handling ---------- */
   let dragging=false, activeId=null, offsetX=0, offsetY=0, downPos={x:0,y:0}, holdTimer=null;
   const isCoarse = matchMedia('(pointer:coarse)').matches;
-  const HOLD_DELAY = isCoarse ? 140 : 0; // tap&hold on phones
+  const HOLD_DELAY = isCoarse ? 140 : 0;  // tap & hold on phones
   const MOVE_TOL = 8;
 
-  dani.addEventListener('dragstart', e=>e.preventDefault());
+  dani.addEventListener('dragstart', e=>e.preventDefault()); // disable native ghost drag
 
   dani.addEventListener('pointerdown', (e)=>{
     activeId = e.pointerId;
@@ -266,16 +266,16 @@
     offsetX = e.clientX - r.left;
     offsetY = e.clientY - r.top;
     downPos = {x:e.clientX, y:e.clientY};
-    bubble.classList.remove('is-visible');
+    hideBubble();
     if(HOLD_DELAY){ holdTimer = setTimeout(startDrag, HOLD_DELAY); }
     else { startDrag(); }
   });
 
   addEventListener('pointermove', (e)=>{
-    if(e.pointerId!==activeId) return;
+    if(e.pointerId !== activeId) return;
     if(!dragging && holdTimer){
       const dx=Math.abs(e.clientX-downPos.x), dy=Math.abs(e.clientY-downPos.y);
-      if(dx>MOVE_TOL||dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
+      if(dx>MOVE_TOL || dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
     }
     if(!dragging) return;
     e.preventDefault();
@@ -288,67 +288,75 @@
   }, {passive:false});
 
   addEventListener('pointerup', (e)=>{
-    if(e.pointerId!==activeId) return;
+    if(e.pointerId !== activeId) return;
     if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; }
 
     if(dragging){
       dragging=false;
 
-      const c = centerOf(dani);
-      const centerX = px.ditchCenterX();
-      const centerY = px.ditchBottomY();
+      const cX = px.centerX();
+      const cY = px.bottomY();
+      const c  = centerOf(dani);
 
-      // Choose the slope under this x
-      const useLeft = c.x <= centerX;
+      const useLeft = c.x <= cX;
       const yOnLine = yOnSlopeAtX(c.x, useLeft);
 
-      // If above the line, fall to it first; else go straight to slide
-      const doSlide = () => slideToCenterAlongSlope(useLeft, c.x, Math.max(c.y, yOnLine), () => {
-        setAnimating(false);
-        showBubble();
-      });
-
-      if (c.y < yOnLine - 1){
-        fallTo(c.x, yOnLine, () => {
-          // centerOf has shifted; start slide exactly from fall landing
-          const after = centerOf(dani);
-          slideToCenterAlongSlope(useLeft, after.x, after.y, () => {
-            setAnimating(false);
-            showBubble();
-          });
+      const startSlide = () => {
+        const from = centerOf(dani);
+        slideToCenter(useLeft, from.x, Math.max(from.y, yOnLine), () => {
+          setAnimating(false);
+          showBubble();
         });
-      }else{
-        doSlide();
+      };
+
+      // If above the slope line, fall to it first
+      if (c.y < yOnLine - 1){
+        fallTo(c.x, yOnLine, startSlide);
+      } else {
+        startSlide();
       }
     }
 
     dani.releasePointerCapture(activeId);
-    activeId=null;
+    activeId = null;
   });
 
   function startDrag(){
     if(dragging) return;
-    dragging=true;
+    dragging = true;
     setAnimating(true);
   }
 
-  /* ---------- Debug overlay (press D) ---------- */
+  /* ---------- debug overlay ---------- */
   function syncDebug(){
-    const cxPct = cssNum('--ditch-left');
-    const cyPct = cssNum('--ditch-top') + cssNum('--ditch-h')/2;
-    const lxp = cssNum('--slope-left-x'),  lyp = cssNum('--slope-left-y');
-    const rxp = cssNum('--slope-right-x'), ryp = cssNum('--slope-right-y');
+    const cx = cssNum('--ditch-left');
+    const cy = cssNum('--ditch-top') + cssNum('--ditch-h')/2;
+    const lx = cssNum('--slope-left-x'),  ly = cssNum('--slope-left-y');
+    const rx = cssNum('--slope-right-x'), ry = cssNum('--slope-right-y');
+    debugSVG.querySelector('#lineL').setAttribute('x1', cx);
+    debugSVG.querySelector('#lineL').setAttribute('y1', cy);
+    debugSVG.querySelector('#lineL').setAttribute('x2', lx);
+    debugSVG.querySelector('#lineL').setAttribute('y2', ly);
+    debugSVG.querySelector('#lineR').setAttribute('x1', cx);
+    debugSVG.querySelector('#lineR').setAttribute('y1', cy);
+    debugSVG.querySelector('#lineR').setAttribute('x2', rx);
+    debugSVG.querySelector('#lineR').setAttribute('y2', ry);
+    debugSVG.querySelector('#landDot').setAttribute('cx', cx);
+    debugSVG.querySelector('#landDot').setAttribute('cy', cy);
+  }
+  syncDebug();
 
-    // Convert to SVG 0..100 coords
-    debugSVG.querySelector('#lineL').setAttribute('x1', cxPct);
-    debugSVG.querySelector('#lineL').setAttribute('y1', cyPct);
-    debugSVG.querySelector('#lineL').setAttribute('x2', lxp);
-    debugSVG.querySelector('#lineL').setAttribute('y2', lyp);
+  let debugOn=false;
+  addEventListener('keydown', (e)=>{
+    if(e.key.toLowerCase()==='d'){
+      debugOn=!debugOn;
+      debugSVG.classList.toggle('on', debugOn);
+      syncDebug();
+    }
+  });
 
-    debugSVG.querySelector('#lineR').setAttribute('x1', cxPct);
-    debugSVG.querySelector('#lineR').setAttribute('y1', cyPct);
-    debugSVG.querySelector('#lineR').setAttribute('x2', rxp);
-    debugSVG.querySelector('#lineR').setAttribute('y2', ryp);
-
-    debugSVG.querySelector('#landDot').setAttribute('cx', cxPct);
-    debugSVG.querySelector('#l
+  addEventListener('resize', syncDebug);
+})();
+</script>
+</body>
+</html>
