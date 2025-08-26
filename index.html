@@ -1,397 +1,483 @@
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
-<meta charset="utf-8" />
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ditch Dani</title>
-<!-- v: ditch-dani-004 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
-<style>
-  :root{
-    /* Tune to your photo (press “D” to see hitboxes) */
-    --ditch-left: 52%;
-    --ditch-top:  68%;
-    --ditch-w:    56%;
-    --ditch-h:    28%;
-    --slope-band: 10%;   /* % of ditch width on both left/right that counts as slope */
-    --ground-y:   60%;   /* flat ground Y as % of viewport height */
 
-    /* Spawn on right bank */
-    --start-left: 72vw;
-    --start-top:  48vh;
+  <meta charset="utf-8" />
 
-    /* Physics */
-    --g: 1800;           /* gravity px/s^2 */
-    --slide-speed: 520;  /* px/s sliding into center */
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    /* Sprite info (4 frames, 600x700 each, laid horizontally) */
-    --frames: 4;
-  }
+  <title>DanielleTheWalker.com — Gallery</title>
 
-  *{ box-sizing:border-box; }
-  html, body{
-    margin:0; height:100%; overflow:hidden; background:#000;
-    font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-  }
+  <!-- Modern sans; light weights on homepage -->
 
-  /* Background */
-  .stage{
-    position:fixed; inset:0;
-    background: #000 center/cover no-repeat url("./ditch.jpg?v=4");
-    background-position: 55% 60%;
-  }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
 
-  /* Debug overlays (press "D") */
-  .hitbox{ position:absolute; pointer-events:none; display:none; }
-  .hitbox.debug{ display:block; }
-  .ditch-box{ outline:2px dashed rgba(255,255,255,.85); outline-offset:2px; }
-  .slope-box{ outline:2px dashed rgba(255,200,0,.8); }
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  /* Dani */
-  .dani{
-    position:absolute;
-    left: var(--start-left);
-    top:  var(--start-top);
-    width: clamp(90px, 16vw, 220px);
-    aspect-ratio: 600 / 700;  /* match your frame ratio */
-    user-select:none; -webkit-user-drag:none;
-    touch-action:none;         /* we handle drag */
-    cursor:grab;
-    transform: translateZ(0);
-    will-change: left, top, transform;
-  }
-  .dani:active{ cursor:grabbing; }
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap" rel="stylesheet">
 
-  .idle{
-    position:absolute; inset:0;
-    width:100%; height:100%; object-fit:contain;
-    pointer-events:none;
-    transition: opacity .12s linear;
-  }
-  .sprite{
-    position:absolute; inset:0;
-    pointer-events:none;
-    opacity:0;
-    background-image:url("./dani_drag_sprites.png?v=4");
-    background-repeat:no-repeat;
-    background-size:400% 100%;   /* exactly 4 frames wide */
-    background-position:0 0;
-    image-rendering: -webkit-optimize-contrast;
-  }
+  <style>
 
-  /* Animate while dragging/falling/sliding */
-  .animating .idle{ opacity:0; }
-  .animating .sprite{
-    opacity:1;
-    animation: play-frames 0.25s steps(4) infinite; /* ~16 fps */
-  }
-  @keyframes play-frames{ to { background-position:100% 0; } }
-
-  /* Speech bubble (appears only when she ends up in ditch center) */
-  .bubble{
-    position:absolute;
-    max-width: 56vw;
-    background:#fff; color:#111;
-    border-radius:18px; padding:10px 14px;
-    font-size: clamp(14px, 2.6vw, 20px);
-    line-height:1.25;
-    box-shadow: 0 8px 28px rgba(0,0,0,0.25);
-    opacity:0; transform: translateY(6px);
-    transition: opacity .22s ease, transform .22s ease;
-    pointer-events:none;
-  }
-  .bubble::after{
-    content:""; position:absolute; left:12px; bottom:-10px;
-    border:10px solid transparent; border-top-color:#fff;
-  }
-  .bubble.is-visible{ opacity:1; transform: translateY(0); }
-
-  /* Back button */
-  #backBtn{
-    position: fixed; left:16px; bottom:16px;
-    width:56px; height:56px; display:flex; align-items:center; justify-content:center;
-    font-size:32px; border-radius:999px; color:#fff; text-decoration:none; cursor:pointer;
-    background: rgba(255,255,255,0.15);
-    backdrop-filter: blur(12px) saturate(1.2);
-    -webkit-backdrop-filter: blur(12px) saturate(1.2);
-    z-index:9999; transition: transform .15s ease, background .2s ease;
-  }
-  #backBtn:hover{ transform: translateY(-1px); background: rgba(255,255,255,0.22); }
-
-  /* Mobile tweaks */
-  @media (max-width: 680px){
-    .stage{ background-position: 60% 68%; } /* nudge crop */
     :root{
-      --start-left: 68vw;
-      --start-top:  46vh;
-      --g: 1500;
-      --slide-speed: 460;
+
+      /* Smooth + plush 1000ms animation */
+
+      --tile-anim: 1s cubic-bezier(.22,.61,.36,1);
+
+      /* Row heights (tweak anytime) */
+
+      --tile-collapsed-h: 14vh;
+
+      --tile-expanded-h: 46vh;
+
+      /* Layout */
+
+      --page-bg: #000;
+
+      --bar-h: 60px;
+
     }
-    .dani{ width: clamp(84px, 22vw, 160px); }
-  }
-</style>
+
+    /* Accessibility: shorter motion if the user prefers */
+
+    @media (prefers-reduced-motion: reduce){
+
+      :root { --tile-anim: 0.2s linear; }
+
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body { height:100%; }
+
+    body{
+
+      margin:0;
+
+      background: var(--page-bg);
+
+      color:#eaeaea;
+
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+
+      font-weight:300; /* lighter look on homepage */
+
+    }
+
+    /* Layout for the gallery */
+
+    main.gallery{
+
+      display:flex;
+
+      flex-direction: column;
+
+      overflow-x:hidden;
+
+    }
+
+    section.tile{
+
+      position:relative;
+
+      height: var(--tile-collapsed-h);
+
+      overflow:hidden;
+
+      margin-bottom: 8px;
+
+      transition: height var(--tile-anim);
+
+    }
+
+    section.tile.is-open{
+
+      height: var(--tile-expanded-h);
+
+    }
+
+    section.tile > a{
+
+      position:absolute; inset:0;
+
+      display:block;
+
+      text-decoration:none;
+
+      color:inherit;
+
+    }
+
+    /* Thumbnail image */
+
+    .thumb{
+
+      position:absolute; inset:0;
+
+      width:100%; height:100%;
+
+      object-fit: cover;
+
+      filter: saturate(1.05) contrast(1.02);
+
+      transform: scale(1);
+
+      transition:
+
+        transform var(--tile-anim),
+
+        filter var(--tile-anim),
+
+        opacity var(--tile-anim);
+
+      will-change: transform, filter, opacity;
+
+    }
+
+    /* Slight zoom on expand */
+
+    .tile:hover .thumb,
+
+    .tile.is-open .thumb,
+
+    .tile:focus-within .thumb {
+
+      transform: scale(1.03);
+
+      filter: saturate(1.15) contrast(1.06);
+
+    }
+
+    /* Fade overlay to darken thumbnails */
+
+    .fade{
+
+      position:absolute; inset:0;
+
+      background:linear-gradient(to bottom, rgba(0,0,0,0) 60%, rgba(0,0,0,0.65) 100%);
+
+      opacity:0;
+
+      transition: opacity var(--tile-anim);
+
+    }
+
+    .tile:hover .fade,
+
+    .tile.is-open .fade,
+
+    .tile:focus-within .fade {
+
+      opacity:1;
+
+    }
+
+    /* Title text on thumbnails */
+
+    .title{
+
+      position:absolute;
+
+      bottom:0; left:0; right:0;
+
+      padding:16px;
+
+      font-size:1rem;
+
+      font-weight:400;
+
+      opacity:0;
+
+      transition: opacity var(--tile-anim);
+
+    }
+
+    .tile:hover .title,
+
+    .tile.is-open .title,
+
+    .tile:focus-within .title {
+
+      opacity:1;
+
+    }
+
+    /* Top black bar with site title */
+
+    .topbar{
+
+      height:var(--bar-h);
+
+      background:rgba(0,0,0,0.8);
+
+      position:sticky;
+
+      top:0; left:0; right:0;
+
+      z-index:10;
+
+      display:flex;
+
+      align-items:center;
+
+      padding:0 16px;
+
+    }
+
+    .brand{
+
+      font-size:1rem;
+
+      font-weight:300;
+
+    }
+
+    /* Mobile tweaks: taller collapsed rows so taps feel easier */
+
+    @media (max-width: 680px){
+
+      :root{
+
+        --tile-collapsed-h: 18vh;
+
+        --tile-expanded-h: 52vh;
+
+      }
+
+      .topbar{ height: 56px; }
+
+    }
+
+  </style>
+
 </head>
+
 <body>
-  <div class="stage" aria-hidden="true"></div>
 
-  <!-- Debug boxes -->
-  <div id="ditchBox"  class="hitbox ditch-box"></div>
-  <div id="slopeLeft" class="hitbox slope-box"></div>
-  <div id="slopeRight"class="hitbox slope-box"></div>
+  <!-- Top black bar -->
 
-  <!-- Dani -->
-  <div id="dani" class="dani">
-    <img class="idle" src="./dani_idle.png?v=4" alt="Dani">
-    <div class="sprite" aria-hidden="true"></div>
+  <div class="topbar">
+
+    <div class="brand">DanielleTheWalker.com</div>
+
   </div>
 
-  <!-- Bubble -->
-  <div id="bubble" class="bubble">Dang I’m Ditched</div>
 
-  <!-- Back -->
-  <a id="backBtn" href="../../" aria-label="Back to gallery">←</a>
 
-<script>
-(() => {
-  const dani = document.getElementById('dani');
-  const bubble = document.getElementById('bubble');
-  const ditchBox = document.getElementById('ditchBox');
-  const slopeLeft = document.getElementById('slopeLeft');
-  const slopeRight = document.getElementById('slopeRight');
+  <!-- Gallery -->
 
-  /* ---------- helpers ---------- */
-  const cssNum = (prop) => parseFloat(getComputedStyle(document.documentElement).getPropertyValue(prop));
-  const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
-  const easeOutQuad = (t)=>1-(1-t)*(1-t);
+  <main class="gallery" id="gallery">
 
-  function computeZones(){
-    const vw = innerWidth, vh = innerHeight;
 
-    const leftPct = cssNum('--ditch-left')/100;
-    const topPct  = cssNum('--ditch-top')/100;
-    const wPct    = cssNum('--ditch-w')/100;
-    const hPct    = cssNum('--ditch-h')/100;
-    const bandPct = cssNum('--slope-band')/100;
 
-    const ditch = {
-      x: vw*leftPct - (vw*wPct)/2,
-      y: vh*topPct  - (vh*hPct)/2,
-      w: vw*wPct,
-      h: vh*hPct
-    };
-    const band = ditch.w * bandPct;
-    const slopeL = { x: ditch.x - band, y: ditch.y, w: band, h: ditch.h };
-    const slopeR = { x: ditch.x + ditch.w, y: ditch.y, w: band, h: ditch.h };
+    <!-- Danielle Doin Things -->
 
-    placeBox(ditchBox, ditch);
-    placeBox(slopeLeft, slopeL);
-    placeBox(slopeRight, slopeR);
+    <section class="tile" data-href="projects/danielle-doin-things/">
 
-    const groundY = vh * (cssNum('--ground-y')/100);
-    return { ditch, slopeL, slopeR, groundY };
-  }
-  function placeBox(el, r){
-    el.style.left = r.x+'px'; el.style.top = r.y+'px';
-    el.style.width = r.w+'px'; el.style.height = r.h+'px';
-  }
-  const rectToDOMRect = (r)=>({left:r.x, top:r.y, right:r.x+r.w, bottom:r.y+r.h});
-  const intersects = (a,b)=>!(a.right<b.left||a.left>b.right||a.bottom<b.top||a.top>b.bottom);
-  const centerOf = (el)=>{ const r=el.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height,rect:r}; };
-  function placeCenter(el, cx, cy){ const w=el.offsetWidth,h=el.offsetHeight; el.style.left=Math.round(cx-w/2)+'px'; el.style.top=Math.round(cy-h/2)+'px'; }
+      <a href="projects/danielle-doin-things/" aria-label="Open Danielle Doin Things">
 
-  /* ---------- drag ---------- */
-  let dragging=false, activeId=null, offsetX=0, offsetY=0, downPos={x:0,y:0}, holdTimer=null;
-  const isCoarse = matchMedia('(pointer:coarse)').matches;
-  const HOLD_DELAY = isCoarse ? 140 : 0;
-  const MOVE_TOL = 8;
+        <!-- Replace the src below with your real thumbnail file if different -->
 
-  dani.addEventListener('dragstart', e=>e.preventDefault());
+        <img class="thumb" src="danielle-doin-things.jpg" alt="Danielle Doin Things thumbnail">
 
-  dani.addEventListener('pointerdown', (e)=>{
-    activeId = e.pointerId;
-    dani.setPointerCapture(activeId);
-    const r = dani.getBoundingClientRect();
-    offsetX = e.clientX - r.left;
-    offsetY = e.clientY - r.top;
-    downPos = {x:e.clientX, y:e.clientY};
-    bubble.classList.remove('is-visible'); // hide bubble on new drag
-    if(HOLD_DELAY){
-      holdTimer = setTimeout(startDrag, HOLD_DELAY);
-    }else{
-      startDrag();
-    }
-  });
+        <div class="fade"></div>
 
-  addEventListener('pointermove', (e)=>{
-    if(e.pointerId!==activeId) return;
-    if(!dragging && holdTimer){
-      const dx=Math.abs(e.clientX-downPos.x), dy=Math.abs(e.clientY-downPos.y);
-      if(dx>MOVE_TOL||dy>MOVE_TOL){ clearTimeout(holdTimer); holdTimer=null; startDrag(); }
-    }
-    if(!dragging) return;
-    e.preventDefault();
-    const x = e.clientX - offsetX;
-    const y = e.clientY - offsetY;
-    const maxX = innerWidth  - dani.offsetWidth;
-    const maxY = innerHeight - dani.offsetHeight;
-    dani.style.left = clamp(x,0,maxX)+'px';
-    dani.style.top  = clamp(y,0,maxY)+'px';
-  }, {passive:false});
+        <div class="title">Danielle Doin Things</div>
 
-  addEventListener('pointerup', (e)=>{
-    if(e.pointerId!==activeId) return;
-    if(holdTimer){ clearTimeout(holdTimer); holdTimer=null; }
+      </a>
 
-    if(dragging){
-      dragging=false;
+    </section>
 
-      const zones = computeZones();
-      const r = dani.getBoundingClientRect();
-      const inDitch = intersects(r, rectToDOMRect(zones.ditch));
-      const inSlopeL= intersects(r, rectToDOMRect(zones.slopeL));
-      const inSlopeR= intersects(r, rectToDOMRect(zones.slopeR));
 
-      if(inDitch){
-        // fall to center-bottom of ditch, then bubble
-        fallTo(zones.ditch.x + zones.ditch.w/2, zones.ditch.y + zones.ditch.h, () => {
-          positionBubble(); bubble.classList.add('is-visible');
-        });
-      }else if(inSlopeL||inSlopeR){
-        // slide to center (keep animating during slide), then bubble
-        slideToCenter(zones, () => { positionBubble(); bubble.classList.add('is-visible'); });
-      }else{
-        // fall to flat ground (same x), then stop (no bubble)
-        const c=centerOf(dani);
-        fallTo(c.x, zones.groundY, () => setAnimating(false));
-      }
-    }
 
-    dani.releasePointerCapture(activeId);
-    activeId=null;
-  });
+    <!-- Danielle Flies -->
 
-  function startDrag(){
-    if(dragging) return;
-    dragging=true;
-    setAnimating(true);
-  }
+    <section class="tile" data-href="projects/danielle-flies/">
 
-  function setAnimating(on){
-    dani.classList.toggle('animating', !!on);
-    // Ensure Safari doesn’t cache animation when turning off
-    if(!on){ dani.querySelector('.sprite').style.animation = ''; }
-  }
+      <a href="projects/danielle-flies/" aria-label="Open Danielle Flies">
 
-  /* ---------- motion ---------- */
+        <!-- Thumbnail -->
 
-  // Physics fall to (targetX, targetY) using rAF + gravity
-  function fallTo(targetX, targetY, onDone){
-    const start = centerOf(dani);
-    const g = cssNum('--g'); // px/s^2
+        <img class="thumb" src="DaniFlies_thumb.png" alt="Danielle Flies thumbnail">
 
-    setAnimating(true);
+        <div class="fade"></div>
 
-    const dx = targetX - start.x;
-    const dy = targetY - start.y;
+        <div class="title">Danielle Flies</div>
 
-    // time to fall from rest: dy = 0.5 * g * t^2  =>  t = sqrt(2*max(dy, 1)/g)
-    const tFall = Math.sqrt(Math.max(2 * Math.max(dy, 1) / g, 0.0001));
-    const vx = dx / tFall; // constant horizontal velocity to meet the x target at the same time
-    let vy = 0;            // vertical starts at 0, accelerates with gravity
+      </a>
 
-    let last = performance.now();
-    function step(now){
-      const dt = (now - last)/1000;
-      last = now;
+    </section>
 
-      vy += g * dt;
 
-      const r = dani.getBoundingClientRect();
-      let cx = r.left + r.width/2 + vx * dt;
-      let cy = r.top  + r.height/2 + vy * dt;
 
-      // Stop when crossing targetY (handles both up/down cases)
-      if ( (dy >= 0 && cy >= targetY) || (dy < 0 && cy <= targetY) ){
-        placeCenter(dani, targetX, targetY);
-        setAnimating(false);
-        if(onDone) onDone();
-        return;
+    <!-- Rolling Dani (game) -->
+
+    <section class="tile" data-href="projects/rolling-dani/">
+
+      <a href="projects/rolling-dani/" aria-label="Open Rolling Dani">
+
+        <!-- Use any image you prefer here -->
+
+        <img class="thumb" src="Dani%20Roll%20thumb.jpg" alt="Rolling Dani thumbnail">
+
+        <div class="fade"></div>
+
+        <div class="title">Rolling Dani</div>
+
+      </a>
+
+    </section>
+
+
+
+
+    <!-- Ditch Dani -->
+
+
+<section class="tile" data-href="projects/ditch-dani/">
+
+
+  <a href="projects/ditch-dani/" aria-label="Open Ditch Dani">
+
+
+    <img class="thumb" src="DitchDani_thumb.jpg" alt="Ditch Dani thumbnail">
+
+
+    <div class="fade"></div>
+
+
+    <div class="title">Ditch Dani</div>
+
+
+  </a>
+
+
+</section>
+
+
+
+
+
+
+
+    <!-- Add more projects by copying a <section class="tile"> block -->
+
+
+
+  </main>
+
+
+
+  <script>
+
+    /*
+
+    Mobile/Touch behavior:
+
+      - First tap expands the tile smoothly (0.75s)
+
+      - Second tap (within window) actually navigates
+
+      - On desktop, :hover handles expand; click navigates directly
+
+    */
+
+    (function(){
+
+      const isTouch = matchMedia('(pointer: coarse)').matches || ('ontouchstart' in window);
+
+      const tiles = Array.from(document.querySelectorAll('.tile'));
+
+      let lastTapAt = 0;
+
+      const SECOND_TAP_WINDOW = 1100; // pairs nicely with 750ms animation
+
+
+
+      // Collapse other tiles when one opens (nice + tidy)
+
+      function closeOthers(except){
+
+        tiles.forEach(t => { if(t !== except) t.classList.remove('is-open'); });
+
       }
 
-      placeCenter(dani, cx, cy);
-      requestAnimationFrame(step);
-    }
-    requestAnimationFrame((now)=>{ last = now; requestAnimationFrame(step); });
-  }
 
-  // Slide from current position to ditch center along a line (eased)
-  function slideToCenter(zones, onDone){
-    const start = centerOf(dani);
-    const target = { x: zones.ditch.x + zones.ditch.w/2, y: zones.ditch.y + zones.ditch.h };
 
-    setAnimating(true);
+      tiles.forEach(tile => {
 
-    const dx = target.x - start.x;
-    const dy = target.y - start.y;
-    const dist = Math.hypot(dx, dy);
-    const speed = cssNum('--slide-speed');  // px/s
-    const duration = Math.max(0.2, dist / speed) * 1000;
+        const link = tile.querySelector('a');
 
-    const t0 = performance.now();
-    function step(now){
-      const t = clamp((now - t0)/duration, 0, 1);
-      const e = easeOutQuad(t);
-      const cx = start.x + dx * e;
-      const cy = start.y + dy * e;
+        if(isTouch){
 
-      placeCenter(dani, cx, cy);
+          link.addEventListener('click', (e) => {
 
-      if (t >= 1){
-        setAnimating(false);
-        if(onDone) onDone();
-        return;
-      }
-      requestAnimationFrame(step);
-    }
-    requestAnimationFrame(step);
-  }
+            // If this tile is not open: expand it, don't navigate yet
 
-  /* ---------- bubble ---------- */
-  function positionBubble(){
-    const r = dani.getBoundingClientRect();
-    let bx = r.left + 12;
-    let by = r.top  - 44;
-    const pad = 8;
-    const maxX = innerWidth  - 180;
-    const maxY = innerHeight - 48;
-    bx = clamp(bx, pad, maxX);
-    by = clamp(by, pad, maxY);
-    bubble.style.left = bx + 'px';
-    bubble.style.top  = by + 'px';
-  }
+            if(!tile.classList.contains('is-open')){
 
-  /* ---------- debug + resize ---------- */
-  let debug = false;
-  addEventListener('keydown', (e) => {
-    if (e.key.toLowerCase() === 'd'){
-      debug = !debug;
-      const z = computeZones();
-      [ditchBox, slopeLeft, slopeRight].forEach(el => el.classList.toggle('debug', debug));
-    }
-  });
+              e.preventDefault();
 
-  addEventListener('resize', () => {
-    if (debug) computeZones();
-  });
+              closeOthers(tile);
 
-  // Initial compute so debug boxes have positions when toggled
-  computeZones();
-})();
-</script>
+              tile.classList.add('is-open');
+
+              lastTapAt = Date.now();
+
+              return;
+
+            }
+
+            // If within the second-tap window: allow navigation
+
+            const now = Date.now();
+
+            if(now - lastTapAt < SECOND_TAP_WINDOW){
+
+              return; // let default link navigation occur
+
+            }
+
+            // Otherwise, treat as first tap again
+
+            e.preventDefault();
+
+            closeOthers(tile);
+
+            tile.classList.add('is-open');
+
+            lastTapAt = now;
+
+          });
+
+        }else{
+
+          // Desktop: hovering expands; clicking navigates
+
+          tile.addEventListener('mouseenter', () => {
+
+            closeOthers(tile);
+
+            tile.classList.add('is-open');
+
+          });
+
+          tile.addEventListener('mouseleave', () => {
+
+            tile.classList.remove('is-open');
+
+          });
+
+        }
+
+      });
+
+    })();
+
+  </script>
+
 </body>
+
 </html>
